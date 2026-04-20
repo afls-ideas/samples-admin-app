@@ -1,0 +1,191 @@
+<template>
+    <lightning-card title="Manage Location Inventory" icon-name="standard:product_item">
+
+        <div slot="actions">
+            <lightning-button label="Back to Menu" onclick={handleBackToMenu} variant="neutral"></lightning-button>
+        </div>
+
+        <div class="slds-p-around_medium">
+
+            <!-- Location Picker -->
+            <div class="slds-grid slds-gutters slds-wrap slds-m-bottom_medium">
+                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+                    <lightning-combobox
+                        label="Location"
+                        value={selectedLocationId}
+                        options={locationOptions}
+                        onchange={handleLocationChange}
+                        placeholder="Select a location..."
+                        required>
+                    </lightning-combobox>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <template if:true={isLoadingInventory}>
+                <lightning-spinner alternative-text="Loading inventory..." size="medium"></lightning-spinner>
+            </template>
+
+            <!-- Existing Inventory -->
+            <template if:true={showInventory}>
+                <div class="slds-section slds-is-open slds-m-bottom_medium">
+                    <h3 class="slds-section__title slds-theme_shade">
+                        <span class="slds-truncate slds-p-horizontal_small" title="Current Inventory">Current Inventory</span>
+                    </h3>
+                    <div class="slds-section__content slds-p-top_small">
+                        <template if:true={hasExistingInventory}>
+                            <template for:each={existingInventory} for:item="product">
+                                <div key={product.productItemId} class="slds-box slds-m-bottom_small existing-inventory">
+                                    <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
+                                        <div class="slds-col">
+                                            <span class="slds-text-heading_small">{product.productName}</span>
+                                        </div>
+                                        <div class="slds-col_bump-left">
+                                            <span class="slds-badge">On Hand: {product.quantityOnHand}</span>
+                                        </div>
+                                    </div>
+                                    <template if:true={product.hasBatches}>
+                                        <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                                            <thead>
+                                                <tr class="slds-line-height_reset">
+                                                    <th scope="col">Batch</th>
+                                                    <th scope="col">Expiration</th>
+                                                    <th scope="col">Remaining Qty</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <template for:each={product.batches} for:item="batch">
+                                                    <tr key={batch.batchItemId}>
+                                                        <td>{batch.batchName}</td>
+                                                        <td>
+                                                            <lightning-formatted-date-time
+                                                                value={batch.expirationDate}
+                                                                year="numeric"
+                                                                month="short"
+                                                                day="2-digit">
+                                                            </lightning-formatted-date-time>
+                                                        </td>
+                                                        <td>
+                                                            <lightning-formatted-number value={batch.remainingQuantity}></lightning-formatted-number>
+                                                        </td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                    </template>
+                                    <template if:false={product.hasBatches}>
+                                        <p class="slds-text-body_small slds-text-color_weak">No batch records.</p>
+                                    </template>
+                                </div>
+                            </template>
+                        </template>
+                        <template if:false={hasExistingInventory}>
+                            <p class="slds-text-body_regular slds-text-color_weak slds-p-around_medium slds-text-align_center">
+                                No inventory at this location.
+                            </p>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Add Inventory Section -->
+                <div class="slds-section slds-is-open">
+                    <h3 class="slds-section__title slds-theme_shade">
+                        <span class="slds-truncate slds-p-horizontal_small" title="Add Inventory">Add Inventory</span>
+                    </h3>
+                    <div class="slds-section__content slds-p-top_small">
+                        <template if:false={isSaveComplete}>
+                            <template for:each={displayLines} for:item="line">
+                                <div key={line.key} class="slds-box slds-m-bottom_small add-inventory-line">
+                                    <div class="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end">
+                                        <div class="slds-col slds-size_1-of-1 slds-medium-size_4-of-12 slds-m-bottom_x-small">
+                                            <lightning-combobox
+                                                label="Product"
+                                                value={line.product2Id}
+                                                options={productOptions}
+                                                onchange={handleProductChange}
+                                                data-line-key={line.key}
+                                                placeholder="Select a product..."
+                                                required>
+                                            </lightning-combobox>
+                                        </div>
+                                        <div class="slds-col slds-size_1-of-1 slds-medium-size_4-of-12 slds-m-bottom_x-small">
+                                            <lightning-combobox
+                                                label="Production Batch"
+                                                value={line.productionBatchId}
+                                                options={line.batchOptions}
+                                                onchange={handleBatchChange}
+                                                data-line-key={line.key}
+                                                placeholder="Select a batch..."
+                                                disabled={line.noBatchOptions}
+                                                required>
+                                            </lightning-combobox>
+                                        </div>
+                                        <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-12 slds-m-bottom_x-small">
+                                            <lightning-input
+                                                type="number"
+                                                label="Quantity"
+                                                value={line.quantity}
+                                                min="1"
+                                                step="1"
+                                                onchange={handleQuantityChange}
+                                                data-line-key={line.key}
+                                                required>
+                                            </lightning-input>
+                                        </div>
+                                        <div class="slds-col slds-size_1-of-1 slds-medium-size_2-of-12 slds-m-bottom_x-small">
+                                            <lightning-button-icon
+                                                icon-name="utility:delete"
+                                                alternative-text="Remove line"
+                                                title="Remove"
+                                                onclick={handleRemoveLine}
+                                                data-line-key={line.key}
+                                                variant="bare"
+                                                size="medium"
+                                                class="slds-m-top_medium">
+                                            </lightning-button-icon>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <div class="slds-m-bottom_medium">
+                                <lightning-button
+                                    label="Add Another Product"
+                                    icon-name="utility:add"
+                                    onclick={handleAddLine}
+                                    variant="neutral">
+                                </lightning-button>
+                            </div>
+
+                            <div class="slds-m-top_medium slds-text-align_right">
+                                <lightning-button
+                                    variant="brand"
+                                    label="Save Inventory"
+                                    onclick={handleSaveInventory}
+                                    disabled={isSaveDisabled}>
+                                </lightning-button>
+                            </div>
+
+                            <template if:true={isSaving}>
+                                <lightning-spinner alternative-text="Saving inventory..." size="medium"></lightning-spinner>
+                            </template>
+                        </template>
+
+                        <template if:true={isSaveComplete}>
+                            <div class="slds-notify slds-notify_alert slds-alert_texture slds-theme_success slds-m-bottom_medium" role="alert">
+                                <h2>{saveMessage}</h2>
+                            </div>
+                            <div class="slds-text-align_center">
+                                <lightning-button
+                                    variant="brand"
+                                    label="Done"
+                                    onclick={handleDone}>
+                                </lightning-button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>

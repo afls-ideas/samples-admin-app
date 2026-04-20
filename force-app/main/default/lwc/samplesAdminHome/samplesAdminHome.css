@@ -1,0 +1,12 @@
+.tile-card {
+    cursor: pointer;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+}
+
+.tile-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}

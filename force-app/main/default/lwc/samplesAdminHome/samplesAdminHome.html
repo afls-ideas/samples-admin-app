@@ -1,0 +1,97 @@
+<template>
+    <template if:true={isHome}>
+        <lightning-card title="Samples Administration" icon-name="standard:maintenance_asset">
+            <div class="slds-p-around_medium">
+                <p class="slds-text-body_regular slds-text-color_weak slds-m-bottom_large">
+                    Select a task to get started.
+                </p>
+
+                <div class="slds-grid slds-gutters slds-wrap">
+                    <!-- Send Shipment -->
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_medium">
+                        <div class="slds-box slds-box_link tile-card" onclick={handleNavigateShipment}>
+                            <div class="slds-media slds-media_center">
+                                <div class="slds-media__figure">
+                                    <lightning-icon icon-name="standard:shipment" size="large"></lightning-icon>
+                                </div>
+                                <div class="slds-media__body">
+                                    <h3 class="slds-text-heading_small">Send Shipment</h3>
+                                    <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                                        Ship samples from a warehouse to a rep's inventory location.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manage Inventory -->
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_medium">
+                        <div class="slds-box slds-box_link tile-card" onclick={handleNavigateInventory}>
+                            <div class="slds-media slds-media_center">
+                                <div class="slds-media__figure">
+                                    <lightning-icon icon-name="standard:product_item" size="large"></lightning-icon>
+                                </div>
+                                <div class="slds-media__body">
+                                    <h3 class="slds-text-heading_small">Manage Inventory</h3>
+                                    <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                                        View and add inventory at any location.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Create Source Location -->
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_medium">
+                        <div class="slds-box slds-box_link tile-card" onclick={handleNavigateSourceLocation}>
+                            <div class="slds-media slds-media_center">
+                                <div class="slds-media__figure">
+                                    <lightning-icon icon-name="standard:location" size="large"></lightning-icon>
+                                </div>
+                                <div class="slds-media__body">
+                                    <h3 class="slds-text-heading_small">Create Source Location</h3>
+                                    <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                                        Create a warehouse, site, or office location for storing inventory.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Create User Inventory Locations -->
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_medium">
+                        <div class="slds-box slds-box_link tile-card" onclick={handleNavigateUserLocations}>
+                            <div class="slds-media slds-media_center">
+                                <div class="slds-media__figure">
+                                    <lightning-icon icon-name="standard:people" size="large"></lightning-icon>
+                                </div>
+                                <div class="slds-media__body">
+                                    <h3 class="slds-text-heading_small">Create User Inventory Locations</h3>
+                                    <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                                        Mass-create inventory locations for multiple reps at a shared address.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </lightning-card>
+    </template>
+
+    <template if:true={isShipment}>
+        <c-samples-shipment-creator onnavigate={handleNavigateEvent}></c-samples-shipment-creator>
+    </template>
+
+    <template if:true={isInventory}>
+        <c-inventory-manager preselected-location-id={inventoryLocationId} onnavigate={handleNavigateEvent}></c-inventory-manager>
+    </template>
+
+    <template if:true={isSourceLocation}>
+        <c-source-location-creator onnavigate={handleNavigateEvent}></c-source-location-creator>
+    </template>
+
+    <template if:true={isUserLocations}>
+        <c-user-inventory-location-creator onnavigate={handleNavigateEvent}></c-user-inventory-location-creator>
+    </template>
+</template>

@@ -1,0 +1,321 @@
+<template>
+    <lightning-card title="Create User Inventory Locations" icon-name="standard:location">
+
+        <div slot="actions">
+            <lightning-button label="Back to Menu" onclick={handleBackToMenu} variant="neutral"></lightning-button>
+        </div>
+
+        <!-- Step Progress -->
+        <div class="slds-p-horizontal_medium slds-p-top_small">
+            <lightning-progress-indicator current-step={currentStep} type="path">
+                <lightning-progress-step label="Select Users" value="1"></lightning-progress-step>
+                <lightning-progress-step label="Enter Address" value="2"></lightning-progress-step>
+                <lightning-progress-step label="Review & Create" value="3"></lightning-progress-step>
+            </lightning-progress-indicator>
+        </div>
+
+        <!-- Step 1: Select Users -->
+        <template if:true={isStep1}>
+            <div class="slds-p-around_medium">
+                <div class="slds-text-heading_small slds-m-bottom_small">
+                    Select users who need an inventory location
+                </div>
+                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_medium">
+                    Users who already have an inventory location are not shown.
+                </p>
+
+                <div class="slds-grid slds-gutters">
+                    <!-- User List (left) -->
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_7-of-12">
+                        <div class="slds-box">
+                            <div class="slds-m-bottom_small">
+                                <lightning-input
+                                    type="search"
+                                    label="Search Users"
+                                    placeholder="Search by name, email, or profile..."
+                                    value={searchTerm}
+                                    onchange={handleSearchChange}>
+                                </lightning-input>
+                            </div>
+                            <div class="user-list-container">
+                                <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_fixed-layout">
+                                    <thead>
+                                        <tr class="slds-line-height_reset">
+                                            <th scope="col" style="width:40px"></th>
+                                            <th scope="col">Name</th>
+                                            <th scope="col">Profile</th>
+                                            <th scope="col">Email</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template for:each={filteredUsers} for:item="user">
+                                            <tr key={user.userId}
+                                                data-user-id={user.userId}
+                                                onclick={handleUserClick}
+                                                class="user-row slds-hint-parent">
+                                                <td>
+                                                    <lightning-input
+                                                        type="checkbox"
+                                                        variant="label-hidden"
+                                                        label="Select"
+                                                        checked={user.isSelected}
+                                                        data-user-id={user.userId}>
+                                                    </lightning-input>
+                                                </td>
+                                                <td>{user.name}</td>
+                                                <td>{user.profileName}</td>
+                                                <td>{user.email}</td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Basket (right) -->
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_5-of-12">
+                        <div class="slds-box">
+                            <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
+                                <div class="slds-col">
+                                    <span class="slds-text-heading_small">Selected Users ({selectedCount})</span>
+                                </div>
+                                <template if:true={hasSelectedUsers}>
+                                    <div class="slds-col_bump-left">
+                                        <lightning-button-icon
+                                            icon-name="utility:clear"
+                                            alternative-text="Clear all"
+                                            title="Clear all"
+                                            onclick={handleClearBasket}
+                                            size="small">
+                                        </lightning-button-icon>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <template if:false={hasSelectedUsers}>
+                                <p class="slds-text-body_regular slds-text-color_weak slds-text-align_center slds-p-around_medium">
+                                    Click users from the list to add them here.
+                                </p>
+                            </template>
+
+                            <template if:true={hasSelectedUsers}>
+                                <div class="basket-container">
+                                    <template for:each={selectedUsers} for:item="user">
+                                        <div key={user.userId} class="basket-item">
+                                            <span>{user.name}</span>
+                                            <lightning-button-icon
+                                                icon-name="utility:close"
+                                                alternative-text="Remove"
+                                                title="Remove"
+                                                data-user-id={user.userId}
+                                                onclick={handleRemoveUser}
+                                                size="x-small"
+                                                variant="bare">
+                                            </lightning-button-icon>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slds-m-top_medium slds-text-align_right">
+                    <lightning-button
+                        variant="brand"
+                        label="Next: Enter Address"
+                        onclick={handleNextToAddress}
+                        disabled={isNextToAddressDisabled}>
+                    </lightning-button>
+                </div>
+            </div>
+        </template>
+
+        <!-- Step 2: Enter Address -->
+        <template if:true={isStep2}>
+            <div class="slds-p-around_medium">
+                <div class="slds-text-heading_small slds-m-bottom_small">
+                    Enter the shared inventory storage address
+                </div>
+                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_medium">
+                    This address will be used for all {selectedCount} selected users.
+                </p>
+
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+                        <lightning-input
+                            label="Street"
+                            value={street}
+                            onchange={handleStreetChange}
+                            required>
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+                        <lightning-input
+                            label="City"
+                            value={city}
+                            onchange={handleCityChange}
+                            required>
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+                        <lightning-combobox
+                            label="Country"
+                            value={countryCode}
+                            options={countryOptions}
+                            onchange={handleCountryChange}
+                            placeholder="Select a country..."
+                            required>
+                        </lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+                        <template if:true={hasStateOptions}>
+                            <lightning-combobox
+                                label="State / Province"
+                                value={stateCode}
+                                options={stateOptions}
+                                onchange={handleStateChange}
+                                placeholder="Select a state...">
+                            </lightning-combobox>
+                        </template>
+                        <template if:false={hasStateOptions}>
+                            <lightning-input
+                                label="State / Province"
+                                value={stateCode}
+                                onchange={handleStateChange}>
+                            </lightning-input>
+                        </template>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+                        <lightning-input
+                            label="Postal Code"
+                            value={postalCode}
+                            onchange={handlePostalCodeChange}>
+                        </lightning-input>
+                    </div>
+                </div>
+
+                <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                    <lightning-button
+                        label="Back"
+                        onclick={handleBack}>
+                    </lightning-button>
+                    <lightning-button
+                        variant="brand"
+                        label="Next: Review"
+                        onclick={handleNextToReview}
+                        disabled={isNextToReviewDisabled}>
+                    </lightning-button>
+                </div>
+            </div>
+        </template>
+
+        <!-- Step 3: Review & Create -->
+        <template if:true={isStep3}>
+            <div class="slds-p-around_medium">
+                <template if:false={isComplete}>
+                    <div class="slds-text-heading_small slds-m-bottom_medium">
+                        Review and confirm
+                    </div>
+
+                    <div class="slds-box slds-m-bottom_medium">
+                        <dl class="slds-dl_horizontal">
+                            <dt class="slds-dl_horizontal__label slds-text-color_weak">Users:</dt>
+                            <dd class="slds-dl_horizontal__detail"><strong>{selectedCount}</strong></dd>
+                            <dt class="slds-dl_horizontal__label slds-text-color_weak">Address:</dt>
+                            <dd class="slds-dl_horizontal__detail">{formattedAddress}</dd>
+                        </dl>
+                    </div>
+
+                    <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                        <thead>
+                            <tr class="slds-line-height_reset">
+                                <th scope="col">User</th>
+                                <th scope="col">Location Name</th>
+                                <th scope="col">Address</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={reviewItems} for:item="item">
+                                <tr key={item.userId}>
+                                    <td>{item.userName}</td>
+                                    <td>{item.locationName}</td>
+                                    <td>{item.address}</td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+
+                    <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                        <lightning-button
+                            label="Back"
+                            onclick={handleBack}>
+                        </lightning-button>
+                        <lightning-button
+                            variant="brand"
+                            label="Create Inventory Locations"
+                            onclick={handleSubmit}
+                            disabled={isSubmitting}>
+                        </lightning-button>
+                    </div>
+
+                    <template if:true={isSubmitting}>
+                        <lightning-spinner alternative-text="Creating locations..." size="medium"></lightning-spinner>
+                    </template>
+                </template>
+
+                <template if:true={isComplete}>
+                    <div class="slds-text-heading_small slds-m-bottom_medium">
+                        Results
+                    </div>
+
+                    <div class="slds-notify slds-notify_alert slds-alert_texture slds-theme_success slds-m-bottom_medium" role="alert">
+                        <h2>{successCount} of {selectedCount} inventory locations created.</h2>
+                    </div>
+
+                    <template if:true={hasFailures}>
+                        <div class="slds-notify slds-notify_alert slds-alert_texture slds-theme_warning slds-m-bottom_medium" role="alert">
+                            <h2>{failureCount} inventory locations could not be created. See details below.</h2>
+                        </div>
+                    </template>
+
+                    <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                        <thead>
+                            <tr class="slds-line-height_reset">
+                                <th scope="col">User</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={creationResults} for:item="result">
+                                <tr key={result.userId}>
+                                    <td>{result.userName}</td>
+                                    <td>
+                                        <template if:true={result.success}>
+                                            <lightning-badge label="Created" class="slds-theme_success"></lightning-badge>
+                                        </template>
+                                        <template if:false={result.success}>
+                                            <lightning-badge label="Failed" class="slds-theme_error"></lightning-badge>
+                                        </template>
+                                    </td>
+                                    <td>{result.message}</td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+
+                    <div class="slds-m-top_large slds-text-align_center">
+                        <lightning-button
+                            variant="brand"
+                            label="Done"
+                            onclick={handleReset}>
+                        </lightning-button>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+    </lightning-card>
+</template>

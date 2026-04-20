@@ -1,0 +1,29 @@
+.user-list-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.user-row {
+    cursor: pointer;
+}
+
+.user-row:hover {
+    background-color: var(--slds-g-color-neutral-base-95, #f3f3f3);
+}
+
+.user-row-selected {
+    background-color: var(--slds-g-color-brand-base-95, #eef4ff);
+}
+
+.basket-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.basket-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.25rem 0.5rem;
+    border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+}

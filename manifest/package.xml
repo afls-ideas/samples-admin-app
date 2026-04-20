@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SamplesShipmentController</members>
+        <members>UserInventoryLocationController</members>
+        <members>SourceLocationController</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>SamplesShipmentCreatorApp</members>
+        <members>UserInventoryLocationCreatorApp</members>
+        <members>SamplesAdminHomeApp</members>
+        <name>AuraDefinitionBundle</name>
+    </types>
+    <types>
+        <members>samplesShipmentCreator</members>
+        <members>userInventoryLocationCreator</members>
+        <members>sourceLocationCreator</members>
+        <members>inventoryManager</members>
+        <members>samplesAdminHome</members>
+        <name>LightningComponentBundle</name>
+    </types>
+    <types>
+        <members>Samples_Admin</members>
+        <members>Samples_Shipment_Creator</members>
+        <members>User_Inventory_Location_Creator</members>
+        <name>CustomTab</name>
+    </types>
+    <types>
+        <members>Samples_Shipment_Admin</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>66.0</version>
+</Package>

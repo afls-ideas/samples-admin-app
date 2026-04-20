@@ -1,0 +1,149 @@
+<template>
+    <lightning-card title="Create Source Location" icon-name="standard:location">
+
+        <div slot="actions">
+            <lightning-button label="Back to Menu" onclick={handleBackToMenu} variant="neutral"></lightning-button>
+        </div>
+
+        <template if:false={isComplete}>
+            <div class="slds-p-around_medium">
+                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_medium">
+                    Create a new source location (e.g. warehouse, site, or office) where sample inventory can be stored and shipped from.
+                </p>
+
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+                        <lightning-input
+                            label="Location Name"
+                            value={locationName}
+                            onchange={handleNameChange}
+                            placeholder="e.g. London Warehouse"
+                            required>
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+                        <lightning-combobox
+                            label="Location Type"
+                            value={locationType}
+                            options={locationTypeOptions}
+                            onchange={handleTypeChange}
+                            placeholder="Select a type..."
+                            required>
+                        </lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+                        <lightning-input
+                            type="checkbox"
+                            label="Is Inventory Location"
+                            checked={isInventoryLocation}
+                            onchange={handleInventoryToggle}>
+                        </lightning-input>
+                    </div>
+                </div>
+
+                <div class="slds-section slds-is-open slds-m-top_small">
+                    <h3 class="slds-section__title slds-theme_shade">
+                        <span class="slds-truncate slds-p-horizontal_small" title="Address">Address</span>
+                    </h3>
+                    <div class="slds-section__content slds-p-top_small">
+                        <div class="slds-grid slds-wrap slds-gutters">
+                            <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+                                <lightning-input
+                                    label="Street"
+                                    value={street}
+                                    onchange={handleStreetChange}
+                                    required>
+                                </lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+                                <lightning-input
+                                    label="City"
+                                    value={city}
+                                    onchange={handleCityChange}
+                                    required>
+                                </lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+                                <lightning-combobox
+                                    label="Country"
+                                    value={countryCode}
+                                    options={countryOptions}
+                                    onchange={handleCountryChange}
+                                    placeholder="Select a country..."
+                                    required>
+                                </lightning-combobox>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+                                <template if:true={hasStateOptions}>
+                                    <lightning-combobox
+                                        label="State / Province"
+                                        value={stateCode}
+                                        options={stateOptions}
+                                        onchange={handleStateChange}
+                                        placeholder="Select a state...">
+                                    </lightning-combobox>
+                                </template>
+                                <template if:false={hasStateOptions}>
+                                    <lightning-input
+                                        label="State / Province"
+                                        value={stateCode}
+                                        onchange={handleStateChange}>
+                                    </lightning-input>
+                                </template>
+                            </div>
+                            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+                                <lightning-input
+                                    label="Postal Code"
+                                    value={postalCode}
+                                    onchange={handlePostalCodeChange}>
+                                </lightning-input>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slds-m-top_medium slds-text-align_right">
+                    <lightning-button
+                        variant="brand"
+                        label="Create Location"
+                        onclick={handleCreateLocation}
+                        disabled={isCreateDisabled}>
+                    </lightning-button>
+                </div>
+
+                <template if:true={isCreatingLocation}>
+                    <lightning-spinner alternative-text="Creating location..." size="medium"></lightning-spinner>
+                </template>
+            </div>
+        </template>
+
+        <template if:true={isComplete}>
+            <div class="slds-p-around_medium">
+                <div class="slds-notify slds-notify_alert slds-alert_texture slds-theme_success slds-m-bottom_medium" role="alert">
+                    <h2>Location "{locationName}" created successfully.</h2>
+                </div>
+
+                <div class="slds-m-top_large slds-text-align_center">
+                    <lightning-button
+                        variant="neutral"
+                        label="Create Another"
+                        onclick={handleReset}
+                        class="slds-m-right_small">
+                    </lightning-button>
+                    <lightning-button
+                        variant="brand"
+                        label="Add Inventory"
+                        onclick={handleAddInventory}
+                        class="slds-m-right_small">
+                    </lightning-button>
+                    <lightning-button
+                        variant="neutral"
+                        label="Back to Menu"
+                        onclick={handleBackToMenu}>
+                    </lightning-button>
+                </div>
+            </div>
+        </template>
+
+    </lightning-card>
+</template>

@@ -1,0 +1,312 @@
+<template>
+    <lightning-card title="Samples Shipment Creator" icon-name="standard:shipment">
+
+        <div slot="actions">
+            <lightning-button label="Back to Menu" onclick={handleBackToMenu} variant="neutral"></lightning-button>
+        </div>
+
+        <!-- Step Progress -->
+        <div class="slds-p-horizontal_medium slds-p-top_small">
+            <lightning-progress-indicator current-step={currentStep} type="path">
+                <lightning-progress-step label="Select Source & Destination" value="1"></lightning-progress-step>
+                <lightning-progress-step label="Select Products" value="2"></lightning-progress-step>
+                <lightning-progress-step label="Review & Submit" value="3"></lightning-progress-step>
+            </lightning-progress-indicator>
+        </div>
+
+        <!-- Step 1: Select Source & Destination -->
+        <template if:true={isStep1}>
+            <div class="slds-p-around_medium">
+                <div class="slds-text-heading_small slds-m-bottom_medium">
+                    Select source warehouse and destination rep
+                </div>
+
+                <div class="slds-grid slds-gutters slds-wrap">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_medium">
+                        <lightning-combobox
+                            label="Source Location"
+                            value={selectedWarehouseId}
+                            options={warehouseOptions}
+                            placeholder="Select a warehouse..."
+                            onchange={handleWarehouseChange}
+                            required>
+                        </lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_medium">
+                        <div class="slds-form-element">
+                            <label class="slds-form-element__label">
+                                <abbr class="slds-required" title="required">*</abbr>
+                                Destination User Inventory Location
+                                <lightning-helptext
+                                    content="Only users with an inventory location are shown. A rep must have a Location record (Type = User Inventory) to receive sample shipments.">
+                                </lightning-helptext>
+                            </label>
+                            <div class="slds-form-element__control">
+                                <div class="rep-search-container">
+                                    <lightning-input
+                                        type="search"
+                                        variant="label-hidden"
+                                        label="Search reps"
+                                        placeholder="Search by name or territory..."
+                                        value={repSearchTerm}
+                                        onchange={handleRepSearch}
+                                        onfocus={handleRepFocus}>
+                                    </lightning-input>
+                                    <template if:true={repDropdownOpen}>
+                                        <div class="rep-dropdown">
+                                            <template for:each={filteredRepOptions} for:item="rep">
+                                                <div key={rep.value}
+                                                     class="rep-option"
+                                                     data-value={rep.value}
+                                                     onmousedown={handleRepSelect}>
+                                                    <span class="rep-name">{rep.label}</span>
+                                                    <template if:true={rep.territory}>
+                                                        <span class="rep-territory">{rep.territory}</span>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                            <template if:true={noRepResults}>
+                                                <div class="rep-option rep-no-results">
+                                                    <span class="rep-territory">No matching reps found</span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <template if:true={isLoadingPreview}>
+                    <lightning-spinner alternative-text="Loading warehouse inventory..." size="small" class="slds-m-top_medium"></lightning-spinner>
+                </template>
+
+                <template if:true={hasWarehousePreview}>
+                    <div class="slds-m-top_medium">
+                        <h3 class="slds-text-heading_small slds-m-bottom_small">Warehouse Inventory</h3>
+                        <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th scope="col">Product</th>
+                                    <th scope="col">On Hand</th>
+                                    <th scope="col">Batches</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={warehousePreview} for:item="item">
+                                    <tr key={item.productItemId}>
+                                        <td>{item.productName}</td>
+                                        <td>
+                                            <lightning-formatted-number value={item.quantityOnHand}></lightning-formatted-number>
+                                        </td>
+                                        <td>{item.batchCount}</td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </template>
+
+                <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                    <template if:true={selectedWarehouseId}>
+                        <lightning-button
+                            label="Manage Source Inventory"
+                            icon-name="utility:settings"
+                            onclick={handleManageInventory}
+                            variant="neutral">
+                        </lightning-button>
+                    </template>
+                    <template if:false={selectedWarehouseId}>
+                        <div></div>
+                    </template>
+                    <lightning-button
+                        variant="brand"
+                        label="Next: Select Products"
+                        onclick={handleNext}
+                        disabled={isNextDisabled}>
+                    </lightning-button>
+                </div>
+            </div>
+        </template>
+
+        <!-- Step 2: Select Products & Quantities -->
+        <template if:true={isStep2}>
+            <div class="slds-p-around_medium">
+                <template if:true={isLoading}>
+                    <lightning-spinner alternative-text="Loading inventory..." size="medium"></lightning-spinner>
+                </template>
+
+                <template if:false={isLoading}>
+                    <div class="slds-text-heading_small slds-m-bottom_medium">
+                        Select samples and quantities to ship
+                    </div>
+
+                    <template if:true={hasNoInventory}>
+                        <div class="slds-illustration slds-illustration_small slds-p-around_medium">
+                            <p class="slds-text-body_regular slds-text-color_weak">
+                                No inventory found at the selected warehouse.
+                            </p>
+                        </div>
+                    </template>
+
+                    <template for:each={inventoryData} for:item="product">
+                        <div key={product.key} class="product-section slds-box slds-m-bottom_small">
+                            <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
+                                <div class="slds-col">
+                                    <span class="slds-text-heading_small">{product.productName}</span>
+                                </div>
+                                <div class="slds-col_bump-left">
+                                    <span class="slds-badge">On Hand: {product.quantityOnHand}</span>
+                                </div>
+                            </div>
+
+                            <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                                <thead>
+                                    <tr class="slds-line-height_reset">
+                                        <th scope="col">Batch / Lot</th>
+                                        <th scope="col">Expiration</th>
+                                        <th scope="col">Available</th>
+                                        <th scope="col">Quantity to Ship</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template for:each={product.batches} for:item="batch">
+                                        <tr key={batch.key}>
+                                            <td>{batch.batchName}</td>
+                                            <td>
+                                                <lightning-formatted-date-time
+                                                    value={batch.expirationDate}
+                                                    year="numeric"
+                                                    month="short"
+                                                    day="2-digit">
+                                                </lightning-formatted-date-time>
+                                            </td>
+                                            <td>{batch.remainingQuantity}</td>
+                                            <td>
+                                                <lightning-input
+                                                    type="number"
+                                                    variant="label-hidden"
+                                                    label="Quantity"
+                                                    value={batch.selectedQuantity}
+                                                    min="0"
+                                                    max={batch.remainingQuantity}
+                                                    step="1"
+                                                    data-product-index={batch.productIndex}
+                                                    data-batch-index={batch.batchIndex}
+                                                    onchange={handleQuantityChange}
+                                                    class="quantity-input">
+                                                </lightning-input>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </template>
+
+                    <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                        <lightning-button
+                            label="Back"
+                            onclick={handleBack}>
+                        </lightning-button>
+                        <lightning-button
+                            variant="brand"
+                            label="Review Shipment"
+                            onclick={handleReview}
+                            disabled={isReviewDisabled}>
+                        </lightning-button>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        <!-- Step 3: Review & Submit -->
+        <template if:true={isStep3}>
+            <div class="slds-p-around_medium">
+                <template if:false={shipmentCreated}>
+                    <div class="slds-text-heading_small slds-m-bottom_medium">
+                        Review shipment details
+                    </div>
+
+                    <div class="slds-grid slds-gutters slds-m-bottom_medium">
+                        <div class="slds-col slds-size_1-of-2">
+                            <dl class="slds-dl_horizontal">
+                                <dt class="slds-dl_horizontal__label slds-text-color_weak">From:</dt>
+                                <dd class="slds-dl_horizontal__detail">{selectedWarehouseName}</dd>
+                                <dt class="slds-dl_horizontal__label slds-text-color_weak">To:</dt>
+                                <dd class="slds-dl_horizontal__detail">{selectedRepName}</dd>
+                                <dt class="slds-dl_horizontal__label slds-text-color_weak">Total Units:</dt>
+                                <dd class="slds-dl_horizontal__detail">
+                                    <strong>{totalQuantity}</strong>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                        <thead>
+                            <tr class="slds-line-height_reset">
+                                <th scope="col">Product</th>
+                                <th scope="col">Batch / Lot</th>
+                                <th scope="col">Expiration</th>
+                                <th scope="col">Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={selectedItems} for:item="item">
+                                <tr key={item.key}>
+                                    <td>{item.productName}</td>
+                                    <td>{item.batchName}</td>
+                                    <td>
+                                        <lightning-formatted-date-time
+                                            value={item.expirationDate}
+                                            year="numeric"
+                                            month="short"
+                                            day="2-digit">
+                                        </lightning-formatted-date-time>
+                                    </td>
+                                    <td>{item.quantity}</td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+
+                    <div class="slds-m-top_medium slds-grid slds-grid_align-spread">
+                        <lightning-button
+                            label="Back"
+                            onclick={handleBack}>
+                        </lightning-button>
+                        <lightning-button
+                            variant="brand"
+                            label="Submit Shipment"
+                            onclick={handleSubmit}
+                            disabled={isSubmitting}>
+                        </lightning-button>
+                    </div>
+
+                    <template if:true={isSubmitting}>
+                        <lightning-spinner alternative-text="Creating shipment..." size="medium"></lightning-spinner>
+                    </template>
+                </template>
+
+                <template if:true={shipmentCreated}>
+                    <div class="slds-notify slds-notify_alert slds-alert_texture slds-theme_success" role="alert">
+                        <h2>
+                            Shipment created successfully. {totalQuantity} units sent to {selectedRepName}.
+                        </h2>
+                    </div>
+
+                    <div class="slds-m-top_large slds-text-align_center">
+                        <lightning-button
+                            variant="brand"
+                            label="Create Another Shipment"
+                            onclick={handleReset}>
+                        </lightning-button>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+    </lightning-card>
+</template>
