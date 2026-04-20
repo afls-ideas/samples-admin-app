@@ -32,7 +32,7 @@
                                 <lightning-input
                                     type="search"
                                     label="Search Users"
-                                    placeholder="Search by name, email, or profile..."
+                                    placeholder="Search by name, territory, or profile..."
                                     value={searchTerm}
                                     onchange={handleSearchChange}>
                                 </lightning-input>
@@ -44,7 +44,7 @@
                                             <th scope="col" style="width:40px"></th>
                                             <th scope="col">Name</th>
                                             <th scope="col">Profile</th>
-                                            <th scope="col">Email</th>
+                                            <th scope="col">Territory</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -64,7 +64,7 @@
                                                 </td>
                                                 <td>{user.name}</td>
                                                 <td>{user.profileName}</td>
-                                                <td>{user.email}</td>
+                                                <td>{user.territory}</td>
                                             </tr>
                                         </template>
                                     </tbody>

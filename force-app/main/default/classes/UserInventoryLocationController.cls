@@ -4,7 +4,7 @@ public with sharing class UserInventoryLocationController {
         @AuraEnabled public Id userId;
         @AuraEnabled public String name;
         @AuraEnabled public String profileName;
-        @AuraEnabled public String email;
+        @AuraEnabled public String territory;
     }
 
     public class LocationResult {
@@ -28,19 +28,38 @@ public with sharing class UserInventoryLocationController {
             usersWithLocation.add(loc.PrimaryUserId);
         }
 
-        List<UserOption> results = new List<UserOption>();
-        for (User u : [
-            SELECT Id, Name, Profile.Name, Email
+        Set<Id> allCandidateIds = new Set<Id>();
+        List<User> users = [
+            SELECT Id, Name, Profile.Name
             FROM User
             WHERE IsActive = true
               AND Id NOT IN :usersWithLocation
             ORDER BY Name
+        ];
+        for (User u : users) {
+            allCandidateIds.add(u.Id);
+        }
+
+        Map<Id, String> territoryMap = new Map<Id, String>();
+        for (UserTerritory2Association uta : [
+            SELECT UserId, Territory2.Name
+            FROM UserTerritory2Association
+            WHERE UserId IN :allCandidateIds AND IsActive = true
+            ORDER BY Territory2.Name
         ]) {
+            if (!territoryMap.containsKey(uta.UserId)) {
+                territoryMap.put(uta.UserId, uta.Territory2.Name);
+            }
+        }
+
+        List<UserOption> results = new List<UserOption>();
+        for (User u : users) {
             UserOption opt = new UserOption();
             opt.userId = u.Id;
             opt.name = u.Name;
             opt.profileName = u.Profile.Name;
-            opt.email = u.Email;
+            opt.territory = territoryMap.containsKey(u.Id)
+                ? territoryMap.get(u.Id) : '';
             results.add(opt);
         }
         return results;

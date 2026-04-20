@@ -28,7 +28,7 @@ export default class UserInventoryLocationCreator extends LightningElement {
                 userId: u.userId,
                 name: u.name,
                 profileName: u.profileName,
-                email: u.email
+                territory: u.territory || ''
             }));
         } else if (error) {
             this.showError('Failed to load users', error);
@@ -54,7 +54,7 @@ export default class UserInventoryLocationCreator extends LightningElement {
         if (term) {
             users = users.filter(u =>
                 u.name.toLowerCase().includes(term) ||
-                (u.email && u.email.toLowerCase().includes(term)) ||
+                (u.territory && u.territory.toLowerCase().includes(term)) ||
                 (u.profileName && u.profileName.toLowerCase().includes(term))
             );
         }
