@@ -96,6 +96,10 @@ After deploying:
 
 3. Access the app from the App Launcher by searching "Samples Shipment Creator"
 
+## Learn More
+
+See [LEARN.md](LEARN.md) for detailed flow diagrams (Mermaid) of each feature, showing which objects are written at every step.
+
 ## Future: Manager-to-Rep Transfers
 
 The architecture supports a future expansion where managers can transfer inventory between reps on their team. The same `createShipment` flow applies — the source would be a rep's Location instead of a warehouse.
