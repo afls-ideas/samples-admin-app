@@ -1,14 +1,15 @@
 import { LightningElement, wire } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
-import getAvailableUsers from '@salesforce/apex/UserInventoryLocationController.getAvailableUsers';
+import getTerritoryTree from '@salesforce/apex/UserInventoryLocationController.getTerritoryTree';
 import getCountryOptions from '@salesforce/apex/UserInventoryLocationController.getCountryOptions';
 import getStateOptions from '@salesforce/apex/UserInventoryLocationController.getStateOptions';
 import createInventoryLocations from '@salesforce/apex/UserInventoryLocationController.createInventoryLocations';
 
 export default class UserInventoryLocationCreator extends LightningElement {
     currentStep = '1';
-    allUsers = [];
+    rawNodes = [];
     selectedUserMap = {};
+    expandedMap = {};
     searchTerm = '';
     street = '';
     city = '';
@@ -21,17 +22,12 @@ export default class UserInventoryLocationCreator extends LightningElement {
     creationResults = [];
     isComplete = false;
 
-    @wire(getAvailableUsers)
-    wiredUsers({ data, error }) {
+    @wire(getTerritoryTree)
+    wiredTree({ data, error }) {
         if (data) {
-            this.allUsers = data.map(u => ({
-                userId: u.userId,
-                name: u.name,
-                profileName: u.profileName,
-                territory: u.territory || ''
-            }));
+            this.rawNodes = data;
         } else if (error) {
-            this.showError('Failed to load users', error);
+            this.showError('Failed to load territory tree', error);
         }
     }
 
@@ -48,20 +44,69 @@ export default class UserInventoryLocationCreator extends LightningElement {
     get isStep2() { return this.currentStep === '2'; }
     get isStep3() { return this.currentStep === '3'; }
 
-    get filteredUsers() {
-        const term = this.searchTerm.toLowerCase();
-        let users = this.allUsers;
-        if (term) {
-            users = users.filter(u =>
-                u.name.toLowerCase().includes(term) ||
-                (u.territory && u.territory.toLowerCase().includes(term)) ||
-                (u.profileName && u.profileName.toLowerCase().includes(term))
-            );
+    get childrenMap() {
+        const map = {};
+        for (const node of this.rawNodes) {
+            const pid = node.parentTerritoryId || 'root';
+            if (!map[pid]) map[pid] = [];
+            map[pid].push(node);
         }
-        return users.map(u => ({
-            ...u,
-            isSelected: !!this.selectedUserMap[u.userId]
-        }));
+        return map;
+    }
+
+    get treeData() {
+        const term = this.searchTerm.toLowerCase();
+        const childrenMap = this.childrenMap;
+
+        const buildNode = (raw) => {
+            const children = (childrenMap[raw.territoryId] || []).map(c => buildNode(c));
+            const eligibleUsers = (raw.users || []).filter(u => !u.hasLocation);
+            const users = eligibleUsers.map(u => ({
+                ...u,
+                isSelected: !!this.selectedUserMap[u.userId],
+                key: raw.territoryId + '-' + u.userId
+            }));
+
+            const hasMatchingUser = term
+                ? users.some(u => u.name.toLowerCase().includes(term))
+                : users.length > 0;
+            const hasMatchingChild = children.some(c => c.visible);
+            const nameMatches = term ? raw.name.toLowerCase().includes(term) : false;
+            const visible = hasMatchingUser || hasMatchingChild || nameMatches;
+
+            const filteredUsers = term
+                ? users.filter(u => u.name.toLowerCase().includes(term) || nameMatches)
+                : users;
+
+            const isExpanded = !!this.expandedMap[raw.territoryId];
+
+            return {
+                territoryId: raw.territoryId,
+                name: raw.name,
+                users: filteredUsers,
+                children: children.filter(c => c.visible),
+                visible,
+                isExpanded,
+                hasChildren: children.filter(c => c.visible).length > 0 || filteredUsers.length > 0,
+                expandIcon: isExpanded ? 'utility:chevrondown' : 'utility:chevronright',
+                userCount: this._countEligibleUsersBelow(raw.territoryId, childrenMap)
+            };
+        };
+
+        const roots = (childrenMap['root'] || []).map(r => buildNode(r));
+        return roots.filter(r => r.visible);
+    }
+
+    _countEligibleUsersBelow(territoryId, childrenMap) {
+        let count = 0;
+        const node = this.rawNodes.find(n => n.territoryId === territoryId);
+        if (node) {
+            count += (node.users || []).filter(u => !u.hasLocation).length;
+        }
+        for (const child of (childrenMap[territoryId] || [])) {
+            count += this._countEligibleUsersBelow(child.territoryId, childrenMap);
+        }
+        return count;
     }
 
     get selectedUsers() {
@@ -115,21 +160,70 @@ export default class UserInventoryLocationCreator extends LightningElement {
     }
 
     handleSearchChange(event) {
-        this.searchTerm = event.target.value;
+        this.searchTerm = event.target.value || '';
+        if (this.searchTerm) {
+            const expanded = { ...this.expandedMap };
+            for (const node of this.rawNodes) {
+                expanded[node.territoryId] = true;
+            }
+            this.expandedMap = expanded;
+        }
     }
 
-    handleUserClick(event) {
-        const userId = event.currentTarget.dataset.userId;
-        const user = this.allUsers.find(u => u.userId === userId);
-        if (!user) return;
+    handleToggle(event) {
+        const tid = event.currentTarget.dataset.territoryId;
+        const updated = { ...this.expandedMap };
+        updated[tid] = !updated[tid];
+        this.expandedMap = updated;
+    }
 
+    handleUserSelect(event) {
+        const userId = event.currentTarget.dataset.userId;
+        const userName = event.currentTarget.dataset.userName;
+        const profileName = event.currentTarget.dataset.profileName;
         const updated = { ...this.selectedUserMap };
         if (updated[userId]) {
             delete updated[userId];
         } else {
-            updated[userId] = { ...user };
+            updated[userId] = { userId, name: userName, profileName };
         }
         this.selectedUserMap = updated;
+    }
+
+    handleTerritorySelect(event) {
+        const tid = event.currentTarget.dataset.territoryId;
+        const users = this._collectUsersBelow(tid);
+        const allSelected = users.every(u => this.selectedUserMap[u.userId]);
+        const updated = { ...this.selectedUserMap };
+        if (allSelected) {
+            for (const u of users) {
+                delete updated[u.userId];
+            }
+        } else {
+            for (const u of users) {
+                if (!updated[u.userId]) {
+                    updated[u.userId] = { userId: u.userId, name: u.name, profileName: u.profileName };
+                }
+            }
+        }
+        this.selectedUserMap = updated;
+    }
+
+    _collectUsersBelow(territoryId) {
+        const results = [];
+        const node = this.rawNodes.find(n => n.territoryId === territoryId);
+        if (node) {
+            for (const u of (node.users || [])) {
+                if (!u.hasLocation) {
+                    results.push(u);
+                }
+            }
+        }
+        const childrenMap = this.childrenMap;
+        for (const child of (childrenMap[territoryId] || [])) {
+            results.push(...this._collectUsersBelow(child.territoryId));
+        }
+        return results;
     }
 
     handleRemoveUser(event) {
@@ -217,11 +311,11 @@ export default class UserInventoryLocationCreator extends LightningElement {
                 this.creationResults = results;
                 this.isComplete = true;
                 this.isSubmitting = false;
-                const successCount = results.filter(r => r.success).length;
+                const sc = results.filter(r => r.success).length;
                 this.dispatchEvent(new ShowToastEvent({
                     title: 'Locations Created',
-                    message: successCount + ' of ' + results.length + ' inventory locations created.',
-                    variant: successCount === results.length ? 'success' : 'warning'
+                    message: sc + ' of ' + results.length + ' inventory locations created.',
+                    variant: sc === results.length ? 'success' : 'warning'
                 }));
             })
             .catch(error => {
@@ -233,6 +327,7 @@ export default class UserInventoryLocationCreator extends LightningElement {
     handleReset() {
         this.currentStep = '1';
         this.selectedUserMap = {};
+        this.expandedMap = {};
         this.searchTerm = '';
         this.street = '';
         this.city = '';

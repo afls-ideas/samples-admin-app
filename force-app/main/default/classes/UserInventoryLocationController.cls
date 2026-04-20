@@ -1,10 +1,17 @@
 public with sharing class UserInventoryLocationController {
 
-    public class UserOption {
+    public class TerritoryNode {
+        @AuraEnabled public Id territoryId;
+        @AuraEnabled public String name;
+        @AuraEnabled public Id parentTerritoryId;
+        @AuraEnabled public List<TerritoryUser> users;
+    }
+
+    public class TerritoryUser {
         @AuraEnabled public Id userId;
         @AuraEnabled public String name;
         @AuraEnabled public String profileName;
-        @AuraEnabled public String territory;
+        @AuraEnabled public Boolean hasLocation;
     }
 
     public class LocationResult {
@@ -16,7 +23,7 @@ public with sharing class UserInventoryLocationController {
     }
 
     @AuraEnabled(cacheable=true)
-    public static List<UserOption> getAvailableUsers() {
+    public static List<TerritoryNode> getTerritoryTree() {
         Set<Id> usersWithLocation = new Set<Id>();
         for (Schema.Location loc : [
             SELECT PrimaryUserId
@@ -28,39 +35,49 @@ public with sharing class UserInventoryLocationController {
             usersWithLocation.add(loc.PrimaryUserId);
         }
 
-        Set<Id> allCandidateIds = new Set<Id>();
-        List<User> users = [
-            SELECT Id, Name, Profile.Name
-            FROM User
-            WHERE IsActive = true
-              AND Id NOT IN :usersWithLocation
+        List<Territory2> territories = [
+            SELECT Id, Name, ParentTerritory2Id
+            FROM Territory2
+            WHERE Territory2Model.State = 'Active'
             ORDER BY Name
         ];
-        for (User u : users) {
-            allCandidateIds.add(u.Id);
-        }
 
-        Map<Id, String> territoryMap = new Map<Id, String>();
-        for (UserTerritory2Association uta : [
-            SELECT UserId, Territory2.Name
+        List<UserTerritory2Association> utas = [
+            SELECT UserId, Territory2Id, User.Name, User.Profile.Name
             FROM UserTerritory2Association
-            WHERE UserId IN :allCandidateIds AND IsActive = true
-            ORDER BY Territory2.Name
-        ]) {
-            if (!territoryMap.containsKey(uta.UserId)) {
-                territoryMap.put(uta.UserId, uta.Territory2.Name);
+            WHERE IsActive = true
+              AND Territory2.Territory2Model.State = 'Active'
+            ORDER BY User.Name
+        ];
+
+        Map<Id, List<TerritoryUser>> territoryUsersMap = new Map<Id, List<TerritoryUser>>();
+        Set<String> seenUserTerritory = new Set<String>();
+        for (UserTerritory2Association uta : utas) {
+            String key = uta.Territory2Id + '-' + uta.UserId;
+            if (seenUserTerritory.contains(key)) continue;
+            seenUserTerritory.add(key);
+
+            if (!territoryUsersMap.containsKey(uta.Territory2Id)) {
+                territoryUsersMap.put(uta.Territory2Id, new List<TerritoryUser>());
             }
+            TerritoryUser tu = new TerritoryUser();
+            tu.userId = uta.UserId;
+            tu.name = uta.User.Name;
+            tu.profileName = uta.User.Profile.Name;
+            tu.hasLocation = usersWithLocation.contains(uta.UserId);
+            territoryUsersMap.get(uta.Territory2Id).add(tu);
         }
 
-        List<UserOption> results = new List<UserOption>();
-        for (User u : users) {
-            UserOption opt = new UserOption();
-            opt.userId = u.Id;
-            opt.name = u.Name;
-            opt.profileName = u.Profile.Name;
-            opt.territory = territoryMap.containsKey(u.Id)
-                ? territoryMap.get(u.Id) : '';
-            results.add(opt);
+        List<TerritoryNode> results = new List<TerritoryNode>();
+        for (Territory2 t : territories) {
+            TerritoryNode node = new TerritoryNode();
+            node.territoryId = t.Id;
+            node.name = t.Name;
+            node.parentTerritoryId = t.ParentTerritory2Id;
+            node.users = territoryUsersMap.containsKey(t.Id)
+                ? territoryUsersMap.get(t.Id)
+                : new List<TerritoryUser>();
+            results.add(node);
         }
         return results;
     }

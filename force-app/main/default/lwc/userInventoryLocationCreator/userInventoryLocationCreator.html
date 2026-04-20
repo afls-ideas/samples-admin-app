@@ -14,66 +14,266 @@
             </lightning-progress-indicator>
         </div>
 
-        <!-- Step 1: Select Users -->
+        <!-- Step 1: Select Users via Territory Tree -->
         <template if:true={isStep1}>
             <div class="slds-p-around_medium">
                 <div class="slds-text-heading_small slds-m-bottom_small">
-                    Select users who need an inventory location
+                    Select users by territory
                 </div>
                 <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_medium">
+                    Expand territories to see users. Select a territory to select all users below it.
                     Users who already have an inventory location are not shown.
                 </p>
 
                 <div class="slds-grid slds-gutters">
-                    <!-- User List (left) -->
+                    <!-- Territory Tree (left) -->
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_7-of-12">
                         <div class="slds-box">
                             <div class="slds-m-bottom_small">
                                 <lightning-input
                                     type="search"
-                                    label="Search Users"
-                                    placeholder="Search by name, territory, or profile..."
+                                    label="Search"
+                                    placeholder="Search by territory or user name..."
                                     value={searchTerm}
                                     onchange={handleSearchChange}>
                                 </lightning-input>
                             </div>
-                            <div class="user-list-container">
-                                <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_fixed-layout">
-                                    <thead>
-                                        <tr class="slds-line-height_reset">
-                                            <th scope="col" style="width:40px"></th>
-                                            <th scope="col">Name</th>
-                                            <th scope="col">Profile</th>
-                                            <th scope="col">Territory</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <template for:each={filteredUsers} for:item="user">
-                                            <tr key={user.userId}
-                                                data-user-id={user.userId}
-                                                onclick={handleUserClick}
-                                                class="user-row slds-hint-parent">
-                                                <td>
+                            <div class="tree-container">
+                                <!-- Level 0 -->
+                                <template for:each={treeData} for:item="l0">
+                                    <div key={l0.territoryId} class="tree-node">
+                                        <div class="tree-territory-row" data-territory-id={l0.territoryId}>
+                                            <template if:true={l0.hasChildren}>
+                                                <lightning-button-icon
+                                                    icon-name={l0.expandIcon}
+                                                    variant="bare"
+                                                    size="small"
+                                                    alternative-text="Toggle"
+                                                    data-territory-id={l0.territoryId}
+                                                    onclick={handleToggle}>
+                                                </lightning-button-icon>
+                                            </template>
+                                            <template if:false={l0.hasChildren}>
+                                                <span class="tree-spacer"></span>
+                                            </template>
+                                            <span class="tree-territory-name"
+                                                  data-territory-id={l0.territoryId}
+                                                  onclick={handleTerritorySelect}>{l0.name}</span>
+                                            <template if:true={l0.userCount}>
+                                                <lightning-badge label={l0.userCount} class="slds-m-left_xx-small"></lightning-badge>
+                                            </template>
+                                        </div>
+                                        <template if:true={l0.isExpanded}>
+                                            <!-- Users at level 0 -->
+                                            <template for:each={l0.users} for:item="user">
+                                                <div key={user.key} class="tree-user-row tree-indent-1">
                                                     <lightning-input
                                                         type="checkbox"
                                                         variant="label-hidden"
                                                         label="Select"
                                                         checked={user.isSelected}
-                                                        data-user-id={user.userId}>
+                                                        data-user-id={user.userId}
+                                                        data-user-name={user.name}
+                                                        data-profile-name={user.profileName}
+                                                        onchange={handleUserSelect}>
                                                     </lightning-input>
-                                                </td>
-                                                <td>{user.name}</td>
-                                                <td>{user.profileName}</td>
-                                                <td>{user.territory}</td>
-                                            </tr>
+                                                    <span class="tree-user-name"
+                                                          data-user-id={user.userId}
+                                                          data-user-name={user.name}
+                                                          data-profile-name={user.profileName}
+                                                          onclick={handleUserSelect}>{user.name}</span>
+                                                    <span class="tree-user-profile">{user.profileName}</span>
+                                                </div>
+                                            </template>
+                                            <!-- Level 1 -->
+                                            <template for:each={l0.children} for:item="l1">
+                                                <div key={l1.territoryId} class="tree-node tree-indent-1">
+                                                    <div class="tree-territory-row">
+                                                        <template if:true={l1.hasChildren}>
+                                                            <lightning-button-icon
+                                                                icon-name={l1.expandIcon}
+                                                                variant="bare"
+                                                                size="small"
+                                                                alternative-text="Toggle"
+                                                                data-territory-id={l1.territoryId}
+                                                                onclick={handleToggle}>
+                                                            </lightning-button-icon>
+                                                        </template>
+                                                        <template if:false={l1.hasChildren}>
+                                                            <span class="tree-spacer"></span>
+                                                        </template>
+                                                        <span class="tree-territory-name"
+                                                              data-territory-id={l1.territoryId}
+                                                              onclick={handleTerritorySelect}>{l1.name}</span>
+                                                        <template if:true={l1.userCount}>
+                                                            <lightning-badge label={l1.userCount} class="slds-m-left_xx-small"></lightning-badge>
+                                                        </template>
+                                                    </div>
+                                                    <template if:true={l1.isExpanded}>
+                                                        <!-- Users at level 1 -->
+                                                        <template for:each={l1.users} for:item="user">
+                                                            <div key={user.key} class="tree-user-row tree-indent-1">
+                                                                <lightning-input
+                                                                    type="checkbox"
+                                                                    variant="label-hidden"
+                                                                    label="Select"
+                                                                    checked={user.isSelected}
+                                                                    data-user-id={user.userId}
+                                                                    data-user-name={user.name}
+                                                                    data-profile-name={user.profileName}
+                                                                    onchange={handleUserSelect}>
+                                                                </lightning-input>
+                                                                <span class="tree-user-name"
+                                                                      data-user-id={user.userId}
+                                                                      data-user-name={user.name}
+                                                                      data-profile-name={user.profileName}
+                                                                      onclick={handleUserSelect}>{user.name}</span>
+                                                                <span class="tree-user-profile">{user.profileName}</span>
+                                                            </div>
+                                                        </template>
+                                                        <!-- Level 2 -->
+                                                        <template for:each={l1.children} for:item="l2">
+                                                            <div key={l2.territoryId} class="tree-node tree-indent-1">
+                                                                <div class="tree-territory-row">
+                                                                    <template if:true={l2.hasChildren}>
+                                                                        <lightning-button-icon
+                                                                            icon-name={l2.expandIcon}
+                                                                            variant="bare"
+                                                                            size="small"
+                                                                            alternative-text="Toggle"
+                                                                            data-territory-id={l2.territoryId}
+                                                                            onclick={handleToggle}>
+                                                                        </lightning-button-icon>
+                                                                    </template>
+                                                                    <template if:false={l2.hasChildren}>
+                                                                        <span class="tree-spacer"></span>
+                                                                    </template>
+                                                                    <span class="tree-territory-name"
+                                                                          data-territory-id={l2.territoryId}
+                                                                          onclick={handleTerritorySelect}>{l2.name}</span>
+                                                                    <template if:true={l2.userCount}>
+                                                                        <lightning-badge label={l2.userCount} class="slds-m-left_xx-small"></lightning-badge>
+                                                                    </template>
+                                                                </div>
+                                                                <template if:true={l2.isExpanded}>
+                                                                    <!-- Users at level 2 -->
+                                                                    <template for:each={l2.users} for:item="user">
+                                                                        <div key={user.key} class="tree-user-row tree-indent-1">
+                                                                            <lightning-input
+                                                                                type="checkbox"
+                                                                                variant="label-hidden"
+                                                                                label="Select"
+                                                                                checked={user.isSelected}
+                                                                                data-user-id={user.userId}
+                                                                                data-user-name={user.name}
+                                                                                data-profile-name={user.profileName}
+                                                                                onchange={handleUserSelect}>
+                                                                            </lightning-input>
+                                                                            <span class="tree-user-name"
+                                                                                  data-user-id={user.userId}
+                                                                                  data-user-name={user.name}
+                                                                                  data-profile-name={user.profileName}
+                                                                                  onclick={handleUserSelect}>{user.name}</span>
+                                                                            <span class="tree-user-profile">{user.profileName}</span>
+                                                                        </div>
+                                                                    </template>
+                                                                    <!-- Level 3 -->
+                                                                    <template for:each={l2.children} for:item="l3">
+                                                                        <div key={l3.territoryId} class="tree-node tree-indent-1">
+                                                                            <div class="tree-territory-row">
+                                                                                <template if:true={l3.hasChildren}>
+                                                                                    <lightning-button-icon
+                                                                                        icon-name={l3.expandIcon}
+                                                                                        variant="bare"
+                                                                                        size="small"
+                                                                                        alternative-text="Toggle"
+                                                                                        data-territory-id={l3.territoryId}
+                                                                                        onclick={handleToggle}>
+                                                                                    </lightning-button-icon>
+                                                                                </template>
+                                                                                <template if:false={l3.hasChildren}>
+                                                                                    <span class="tree-spacer"></span>
+                                                                                </template>
+                                                                                <span class="tree-territory-name"
+                                                                                      data-territory-id={l3.territoryId}
+                                                                                      onclick={handleTerritorySelect}>{l3.name}</span>
+                                                                                <template if:true={l3.userCount}>
+                                                                                    <lightning-badge label={l3.userCount} class="slds-m-left_xx-small"></lightning-badge>
+                                                                                </template>
+                                                                            </div>
+                                                                            <template if:true={l3.isExpanded}>
+                                                                                <!-- Users at level 3 -->
+                                                                                <template for:each={l3.users} for:item="user">
+                                                                                    <div key={user.key} class="tree-user-row tree-indent-1">
+                                                                                        <lightning-input
+                                                                                            type="checkbox"
+                                                                                            variant="label-hidden"
+                                                                                            label="Select"
+                                                                                            checked={user.isSelected}
+                                                                                            data-user-id={user.userId}
+                                                                                            data-user-name={user.name}
+                                                                                            data-profile-name={user.profileName}
+                                                                                            onchange={handleUserSelect}>
+                                                                                        </lightning-input>
+                                                                                        <span class="tree-user-name"
+                                                                                              data-user-id={user.userId}
+                                                                                              data-user-name={user.name}
+                                                                                              data-profile-name={user.profileName}
+                                                                                              onclick={handleUserSelect}>{user.name}</span>
+                                                                                        <span class="tree-user-profile">{user.profileName}</span>
+                                                                                    </div>
+                                                                                </template>
+                                                                                <!-- Level 4 -->
+                                                                                <template for:each={l3.children} for:item="l4">
+                                                                                    <div key={l4.territoryId} class="tree-node tree-indent-1">
+                                                                                        <div class="tree-territory-row">
+                                                                                            <span class="tree-spacer"></span>
+                                                                                            <span class="tree-territory-name"
+                                                                                                  data-territory-id={l4.territoryId}
+                                                                                                  onclick={handleTerritorySelect}>{l4.name}</span>
+                                                                                            <template if:true={l4.userCount}>
+                                                                                                <lightning-badge label={l4.userCount} class="slds-m-left_xx-small"></lightning-badge>
+                                                                                            </template>
+                                                                                        </div>
+                                                                                        <template for:each={l4.users} for:item="user">
+                                                                                            <div key={user.key} class="tree-user-row tree-indent-1">
+                                                                                                <lightning-input
+                                                                                                    type="checkbox"
+                                                                                                    variant="label-hidden"
+                                                                                                    label="Select"
+                                                                                                    checked={user.isSelected}
+                                                                                                    data-user-id={user.userId}
+                                                                                                    data-user-name={user.name}
+                                                                                                    data-profile-name={user.profileName}
+                                                                                                    onchange={handleUserSelect}>
+                                                                                                </lightning-input>
+                                                                                                <span class="tree-user-name"
+                                                                                                      data-user-id={user.userId}
+                                                                                                      data-user-name={user.name}
+                                                                                                      data-profile-name={user.profileName}
+                                                                                                      onclick={handleUserSelect}>{user.name}</span>
+                                                                                                <span class="tree-user-profile">{user.profileName}</span>
+                                                                                            </div>
+                                                                                        </template>
+                                                                                    </div>
+                                                                                </template>
+                                                                            </template>
+                                                                        </div>
+                                                                    </template>
+                                                                </template>
+                                                            </div>
+                                                        </template>
+                                                    </template>
+                                                </div>
+                                            </template>
                                         </template>
-                                    </tbody>
-                                </table>
+                                    </div>
+                                </template>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Basket (right) -->
+                    <!-- Selected Users Basket (right) -->
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_5-of-12">
                         <div class="slds-box">
                             <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
@@ -95,7 +295,7 @@
 
                             <template if:false={hasSelectedUsers}>
                                 <p class="slds-text-body_regular slds-text-color_weak slds-text-align_center slds-p-around_medium">
-                                    Click users from the list to add them here.
+                                    Select users from the territory tree to add them here.
                                 </p>
                             </template>
 
