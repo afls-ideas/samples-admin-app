@@ -14,7 +14,6 @@ export default class SamplesShipmentCreator extends LightningElement {
     rawNodes = [];
     repExpandedMap = {};
     repSearchTerm = '';
-    repTreeOpen = false;
     inventoryData = [];
     selectedItems = [];
     isLoading = false;
@@ -161,11 +160,6 @@ export default class SamplesShipmentCreator extends LightningElement {
             }
             this.repExpandedMap = expanded;
         }
-        this.repTreeOpen = true;
-    }
-
-    handleRepTreeFocus() {
-        this.repTreeOpen = true;
     }
 
     handleRepTreeSelect(event) {
@@ -173,8 +167,6 @@ export default class SamplesShipmentCreator extends LightningElement {
         const userName = event.currentTarget.dataset.userName;
         this.selectedRepLocationId = locationId;
         this.selectedRepName = userName;
-        this.repTreeOpen = false;
-        this.repSearchTerm = '';
     }
 
     handleRepClear() {
@@ -318,7 +310,6 @@ export default class SamplesShipmentCreator extends LightningElement {
         this.selectedRepName = '';
         this.repSearchTerm = '';
         this.repExpandedMap = {};
-        this.repTreeOpen = false;
         this.inventoryData = [];
         this.warehousePreview = [];
         this.selectedItems = [];
