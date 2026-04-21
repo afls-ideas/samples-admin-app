@@ -3,13 +3,12 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getWarehouses from '@salesforce/apex/SamplesShipmentController.getWarehouses';
 import getRepTerritoryTree from '@salesforce/apex/SamplesShipmentController.getRepTerritoryTree';
 import getWarehouseInventory from '@salesforce/apex/SamplesShipmentController.getWarehouseInventory';
-import createShipment from '@salesforce/apex/SamplesShipmentController.createShipment';
+import createShipments from '@salesforce/apex/SamplesShipmentController.createShipments';
 
 export default class SamplesShipmentCreator extends LightningElement {
     currentStep = '1';
     selectedWarehouseId = '';
-    selectedRepLocationId = '';
-    selectedRepName = '';
+    selectedRepMap = {};
     warehouseOptions = [];
     rawNodes = [];
     repExpandedMap = {};
@@ -21,7 +20,7 @@ export default class SamplesShipmentCreator extends LightningElement {
     isSubmitting = false;
     warehousePreview = [];
     shipmentCreated = false;
-    createdRecordId = null;
+    shipmentResults = [];
 
     @wire(getWarehouses)
     wiredWarehouses({ data, error }) {
@@ -49,7 +48,7 @@ export default class SamplesShipmentCreator extends LightningElement {
     get isStep3() { return this.currentStep === '3'; }
 
     get isNextDisabled() {
-        return !(this.selectedWarehouseId && this.selectedRepLocationId);
+        return !(this.selectedWarehouseId && this.hasSelectedReps);
     }
 
     get isReviewDisabled() {
@@ -75,7 +74,37 @@ export default class SamplesShipmentCreator extends LightningElement {
         return this.warehousePreview.length > 0;
     }
 
-    // --- Territory tree for rep selection ---
+    // --- Multi-select rep management ---
+
+    get selectedReps() {
+        return Object.values(this.selectedRepMap);
+    }
+
+    get selectedRepCount() {
+        return this.selectedReps.length;
+    }
+
+    get hasSelectedReps() {
+        return this.selectedRepCount > 0;
+    }
+
+    get selectedRepNames() {
+        return this.selectedReps.map(r => r.name).join(', ');
+    }
+
+    get shipmentSuccessCount() {
+        return this.shipmentResults.filter(r => r.success).length;
+    }
+
+    get shipmentFailureCount() {
+        return this.shipmentResults.filter(r => !r.success).length;
+    }
+
+    get hasShipmentFailures() {
+        return this.shipmentFailureCount > 0;
+    }
+
+    // --- Territory tree ---
 
     get childrenMap() {
         const map = {};
@@ -95,7 +124,7 @@ export default class SamplesShipmentCreator extends LightningElement {
             const children = (childrenMap[raw.territoryId] || []).map(c => buildNode(c));
             const users = (raw.users || []).map(u => ({
                 ...u,
-                isSelected: this.selectedRepLocationId === u.locationId,
+                isSelected: !!this.selectedRepMap[u.locationId],
                 key: raw.territoryId + '-' + u.userId
             }));
 
@@ -144,6 +173,21 @@ export default class SamplesShipmentCreator extends LightningElement {
         return count;
     }
 
+    _collectRepsBelow(territoryId) {
+        const results = [];
+        const node = this.rawNodes.find(n => n.territoryId === territoryId);
+        if (node) {
+            for (const u of (node.users || [])) {
+                results.push(u);
+            }
+        }
+        const childrenMap = this.childrenMap;
+        for (const child of (childrenMap[territoryId] || [])) {
+            results.push(...this._collectRepsBelow(child.territoryId));
+        }
+        return results;
+    }
+
     handleRepTreeToggle(event) {
         const tid = event.currentTarget.dataset.territoryId;
         const updated = { ...this.repExpandedMap };
@@ -162,18 +206,46 @@ export default class SamplesShipmentCreator extends LightningElement {
         }
     }
 
-    handleRepTreeSelect(event) {
+    handleRepSelect(event) {
         const locationId = event.currentTarget.dataset.locationId;
         const userName = event.currentTarget.dataset.userName;
-        this.selectedRepLocationId = locationId;
-        this.selectedRepName = userName;
+        const updated = { ...this.selectedRepMap };
+        if (updated[locationId]) {
+            delete updated[locationId];
+        } else {
+            updated[locationId] = { locationId, name: userName };
+        }
+        this.selectedRepMap = updated;
     }
 
-    handleRepClear() {
-        this.selectedRepLocationId = '';
-        this.selectedRepName = '';
-        this.repSearchTerm = '';
-        this.repTreeOpen = false;
+    handleTerritorySelect(event) {
+        const tid = event.currentTarget.dataset.territoryId;
+        const reps = this._collectRepsBelow(tid);
+        const allSelected = reps.every(u => this.selectedRepMap[u.locationId]);
+        const updated = { ...this.selectedRepMap };
+        if (allSelected) {
+            for (const u of reps) {
+                delete updated[u.locationId];
+            }
+        } else {
+            for (const u of reps) {
+                if (!updated[u.locationId]) {
+                    updated[u.locationId] = { locationId: u.locationId, name: u.name };
+                }
+            }
+        }
+        this.selectedRepMap = updated;
+    }
+
+    handleRemoveRep(event) {
+        const locationId = event.currentTarget.dataset.locationId;
+        const updated = { ...this.selectedRepMap };
+        delete updated[locationId];
+        this.selectedRepMap = updated;
+    }
+
+    handleClearReps() {
+        this.selectedRepMap = {};
     }
 
     // --- Warehouse ---
@@ -282,39 +354,41 @@ export default class SamplesShipmentCreator extends LightningElement {
             batchName: item.batchName
         }));
 
-        createShipment({
+        const repLocationIds = this.selectedReps.map(r => r.locationId);
+
+        createShipments({
             warehouseLocationId: this.selectedWarehouseId,
-            repLocationId: this.selectedRepLocationId,
+            repLocationIdsJson: JSON.stringify(repLocationIds),
             lineItemsJson: JSON.stringify(lineItems)
         })
-            .then(result => {
-                this.createdRecordId = result;
+            .then(results => {
+                this.shipmentResults = results;
                 this.shipmentCreated = true;
                 this.isSubmitting = false;
+                const sc = results.filter(r => r.success).length;
                 this.dispatchEvent(new ShowToastEvent({
-                    title: 'Shipment Created',
-                    message: 'Shipment sent to ' + this.selectedRepName,
-                    variant: 'success'
+                    title: 'Shipments Created',
+                    message: sc + ' of ' + results.length + ' shipments created.',
+                    variant: sc === results.length ? 'success' : 'warning'
                 }));
             })
             .catch(error => {
                 this.isSubmitting = false;
-                this.showError('Failed to create shipment', error);
+                this.showError('Failed to create shipments', error);
             });
     }
 
     handleReset() {
         this.currentStep = '1';
         this.selectedWarehouseId = '';
-        this.selectedRepLocationId = '';
-        this.selectedRepName = '';
+        this.selectedRepMap = {};
         this.repSearchTerm = '';
         this.repExpandedMap = {};
         this.inventoryData = [];
         this.warehousePreview = [];
         this.selectedItems = [];
         this.shipmentCreated = false;
-        this.createdRecordId = null;
+        this.shipmentResults = [];
     }
 
     handleManageInventory() {

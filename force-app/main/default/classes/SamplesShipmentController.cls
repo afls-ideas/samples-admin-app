@@ -188,6 +188,51 @@ public with sharing class SamplesShipmentController {
         return results;
     }
 
+    public class ShipmentResult {
+        @AuraEnabled public Id repLocationId;
+        @AuraEnabled public String repName;
+        @AuraEnabled public Boolean success;
+        @AuraEnabled public String message;
+        @AuraEnabled public Id inventoryOperationId;
+    }
+
+    @AuraEnabled
+    public static List<ShipmentResult> createShipments(Id warehouseLocationId, String repLocationIdsJson, String lineItemsJson) {
+        List<Id> repLocationIds = (List<Id>) JSON.deserialize(repLocationIdsJson, List<Id>.class);
+        List<ShipmentResult> results = new List<ShipmentResult>();
+        for (Id repLocId : repLocationIds) {
+            ShipmentResult sr = new ShipmentResult();
+            sr.repLocationId = repLocId;
+            try {
+                sr.inventoryOperationId = createShipment(warehouseLocationId, repLocId, lineItemsJson);
+                sr.success = true;
+                sr.message = 'Created';
+            } catch (Exception e) {
+                sr.success = false;
+                sr.message = e.getMessage();
+            }
+            results.add(sr);
+        }
+
+        Map<Id, Schema.Location> locMap = new Map<Id, Schema.Location>([
+            SELECT Id, Name, PrimaryUserId FROM Location WHERE Id IN :repLocationIds
+        ]);
+        Set<Id> userIds = new Set<Id>();
+        for (Schema.Location loc : locMap.values()) {
+            if (loc.PrimaryUserId != null) userIds.add(loc.PrimaryUserId);
+        }
+        Map<Id, User> userMap = new Map<Id, User>([SELECT Id, Name FROM User WHERE Id IN :userIds]);
+        for (ShipmentResult sr : results) {
+            Schema.Location loc = locMap.get(sr.repLocationId);
+            if (loc != null && loc.PrimaryUserId != null && userMap.containsKey(loc.PrimaryUserId)) {
+                sr.repName = userMap.get(loc.PrimaryUserId).Name;
+            } else if (loc != null) {
+                sr.repName = loc.Name;
+            }
+        }
+        return results;
+    }
+
     @AuraEnabled
     public static Id createShipment(Id warehouseLocationId, Id repLocationId, String lineItemsJson) {
         List<LineItem> lineItems = (List<LineItem>) JSON.deserialize(lineItemsJson, List<LineItem>.class);

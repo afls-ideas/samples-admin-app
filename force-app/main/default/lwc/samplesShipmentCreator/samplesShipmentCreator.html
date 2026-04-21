@@ -18,7 +18,7 @@
         <template if:true={isStep1}>
             <div class="slds-p-around_medium">
                 <div class="slds-text-heading_small slds-m-bottom_medium">
-                    Select source warehouse and destination rep
+                    Select source warehouse and destination reps
                 </div>
 
                 <!-- Source Warehouse -->
@@ -33,13 +33,13 @@
                     </lightning-combobox>
                 </div>
 
-                <!-- Destination Rep: Territory Tree + Selected Rep -->
-                <div class="slds-form-element slds-m-bottom_medium">
+                <!-- Destination Reps -->
+                <div class="slds-form-element slds-m-bottom_x-small">
                     <label class="slds-form-element__label">
                         <abbr class="slds-required" title="required">*</abbr>
-                        Destination User Inventory Location
+                        Destination Reps
                         <lightning-helptext
-                            content="Browse the territory hierarchy to find and select a rep. Only users with an inventory location are shown.">
+                            content="Select one or more reps. The same samples and quantities will be shipped to each selected rep. Click a territory name to select/deselect all reps in it.">
                         </lightning-helptext>
                     </label>
                 </div>
@@ -75,23 +75,29 @@
                                             <template if:false={l0.hasChildren}>
                                                 <span class="tree-spacer"></span>
                                             </template>
-                                            <span class="tree-territory-name">{l0.name}</span>
+                                            <span class="tree-territory-name"
+                                                  data-territory-id={l0.territoryId}
+                                                  onclick={handleTerritorySelect}>{l0.name}</span>
                                             <template if:true={l0.repCount}>
                                                 <lightning-badge label={l0.repCount} class="slds-m-left_xx-small"></lightning-badge>
                                             </template>
                                         </div>
                                         <template if:true={l0.isExpanded}>
                                             <template for:each={l0.users} for:item="user">
-                                                <div key={user.key}
-                                                     class="tree-user-row tree-indent-1"
-                                                     data-location-id={user.locationId}
-                                                     data-user-name={user.name}
-                                                     onclick={handleRepTreeSelect}>
-                                                    <lightning-icon icon-name="standard:user" size="x-small" class="slds-m-right_x-small"></lightning-icon>
-                                                    <span class="tree-user-name">{user.name}</span>
-                                                    <template if:true={user.isSelected}>
-                                                        <lightning-icon icon-name="utility:check" size="x-small" variant="success" class="slds-m-left_xx-small"></lightning-icon>
-                                                    </template>
+                                                <div key={user.key} class="tree-user-row tree-indent-1">
+                                                    <lightning-input
+                                                        type="checkbox"
+                                                        variant="label-hidden"
+                                                        label="Select"
+                                                        checked={user.isSelected}
+                                                        data-location-id={user.locationId}
+                                                        data-user-name={user.name}
+                                                        onchange={handleRepSelect}>
+                                                    </lightning-input>
+                                                    <span class="tree-user-name"
+                                                          data-location-id={user.locationId}
+                                                          data-user-name={user.name}
+                                                          onclick={handleRepSelect}>{user.name}</span>
                                                 </div>
                                             </template>
                                             <!-- Level 1 -->
@@ -111,23 +117,29 @@
                                                         <template if:false={l1.hasChildren}>
                                                             <span class="tree-spacer"></span>
                                                         </template>
-                                                        <span class="tree-territory-name">{l1.name}</span>
+                                                        <span class="tree-territory-name"
+                                                              data-territory-id={l1.territoryId}
+                                                              onclick={handleTerritorySelect}>{l1.name}</span>
                                                         <template if:true={l1.repCount}>
                                                             <lightning-badge label={l1.repCount} class="slds-m-left_xx-small"></lightning-badge>
                                                         </template>
                                                     </div>
                                                     <template if:true={l1.isExpanded}>
                                                         <template for:each={l1.users} for:item="user">
-                                                            <div key={user.key}
-                                                                 class="tree-user-row tree-indent-1"
-                                                                 data-location-id={user.locationId}
-                                                                 data-user-name={user.name}
-                                                                 onclick={handleRepTreeSelect}>
-                                                                <lightning-icon icon-name="standard:user" size="x-small" class="slds-m-right_x-small"></lightning-icon>
-                                                                <span class="tree-user-name">{user.name}</span>
-                                                                <template if:true={user.isSelected}>
-                                                                    <lightning-icon icon-name="utility:check" size="x-small" variant="success" class="slds-m-left_xx-small"></lightning-icon>
-                                                                </template>
+                                                            <div key={user.key} class="tree-user-row tree-indent-1">
+                                                                <lightning-input
+                                                                    type="checkbox"
+                                                                    variant="label-hidden"
+                                                                    label="Select"
+                                                                    checked={user.isSelected}
+                                                                    data-location-id={user.locationId}
+                                                                    data-user-name={user.name}
+                                                                    onchange={handleRepSelect}>
+                                                                </lightning-input>
+                                                                <span class="tree-user-name"
+                                                                      data-location-id={user.locationId}
+                                                                      data-user-name={user.name}
+                                                                      onclick={handleRepSelect}>{user.name}</span>
                                                             </div>
                                                         </template>
                                                         <!-- Level 2 -->
@@ -147,23 +159,29 @@
                                                                     <template if:false={l2.hasChildren}>
                                                                         <span class="tree-spacer"></span>
                                                                     </template>
-                                                                    <span class="tree-territory-name">{l2.name}</span>
+                                                                    <span class="tree-territory-name"
+                                                                          data-territory-id={l2.territoryId}
+                                                                          onclick={handleTerritorySelect}>{l2.name}</span>
                                                                     <template if:true={l2.repCount}>
                                                                         <lightning-badge label={l2.repCount} class="slds-m-left_xx-small"></lightning-badge>
                                                                     </template>
                                                                 </div>
                                                                 <template if:true={l2.isExpanded}>
                                                                     <template for:each={l2.users} for:item="user">
-                                                                        <div key={user.key}
-                                                                             class="tree-user-row tree-indent-1"
-                                                                             data-location-id={user.locationId}
-                                                                             data-user-name={user.name}
-                                                                             onclick={handleRepTreeSelect}>
-                                                                            <lightning-icon icon-name="standard:user" size="x-small" class="slds-m-right_x-small"></lightning-icon>
-                                                                            <span class="tree-user-name">{user.name}</span>
-                                                                            <template if:true={user.isSelected}>
-                                                                                <lightning-icon icon-name="utility:check" size="x-small" variant="success" class="slds-m-left_xx-small"></lightning-icon>
-                                                                            </template>
+                                                                        <div key={user.key} class="tree-user-row tree-indent-1">
+                                                                            <lightning-input
+                                                                                type="checkbox"
+                                                                                variant="label-hidden"
+                                                                                label="Select"
+                                                                                checked={user.isSelected}
+                                                                                data-location-id={user.locationId}
+                                                                                data-user-name={user.name}
+                                                                                onchange={handleRepSelect}>
+                                                                            </lightning-input>
+                                                                            <span class="tree-user-name"
+                                                                                  data-location-id={user.locationId}
+                                                                                  data-user-name={user.name}
+                                                                                  onclick={handleRepSelect}>{user.name}</span>
                                                                         </div>
                                                                     </template>
                                                                     <!-- Level 3 -->
@@ -183,23 +201,29 @@
                                                                                 <template if:false={l3.hasChildren}>
                                                                                     <span class="tree-spacer"></span>
                                                                                 </template>
-                                                                                <span class="tree-territory-name">{l3.name}</span>
+                                                                                <span class="tree-territory-name"
+                                                                                      data-territory-id={l3.territoryId}
+                                                                                      onclick={handleTerritorySelect}>{l3.name}</span>
                                                                                 <template if:true={l3.repCount}>
                                                                                     <lightning-badge label={l3.repCount} class="slds-m-left_xx-small"></lightning-badge>
                                                                                 </template>
                                                                             </div>
                                                                             <template if:true={l3.isExpanded}>
                                                                                 <template for:each={l3.users} for:item="user">
-                                                                                    <div key={user.key}
-                                                                                         class="tree-user-row tree-indent-1"
-                                                                                         data-location-id={user.locationId}
-                                                                                         data-user-name={user.name}
-                                                                                         onclick={handleRepTreeSelect}>
-                                                                                        <lightning-icon icon-name="standard:user" size="x-small" class="slds-m-right_x-small"></lightning-icon>
-                                                                                        <span class="tree-user-name">{user.name}</span>
-                                                                                        <template if:true={user.isSelected}>
-                                                                                            <lightning-icon icon-name="utility:check" size="x-small" variant="success" class="slds-m-left_xx-small"></lightning-icon>
-                                                                                        </template>
+                                                                                    <div key={user.key} class="tree-user-row tree-indent-1">
+                                                                                        <lightning-input
+                                                                                            type="checkbox"
+                                                                                            variant="label-hidden"
+                                                                                            label="Select"
+                                                                                            checked={user.isSelected}
+                                                                                            data-location-id={user.locationId}
+                                                                                            data-user-name={user.name}
+                                                                                            onchange={handleRepSelect}>
+                                                                                        </lightning-input>
+                                                                                        <span class="tree-user-name"
+                                                                                              data-location-id={user.locationId}
+                                                                                              data-user-name={user.name}
+                                                                                              onclick={handleRepSelect}>{user.name}</span>
                                                                                     </div>
                                                                                 </template>
                                                                                 <!-- Level 4 -->
@@ -207,22 +231,28 @@
                                                                                     <div key={l4.territoryId} class="tree-node tree-indent-1">
                                                                                         <div class="tree-territory-row">
                                                                                             <span class="tree-spacer"></span>
-                                                                                            <span class="tree-territory-name">{l4.name}</span>
+                                                                                            <span class="tree-territory-name"
+                                                                                                  data-territory-id={l4.territoryId}
+                                                                                                  onclick={handleTerritorySelect}>{l4.name}</span>
                                                                                             <template if:true={l4.repCount}>
                                                                                                 <lightning-badge label={l4.repCount} class="slds-m-left_xx-small"></lightning-badge>
                                                                                             </template>
                                                                                         </div>
                                                                                         <template for:each={l4.users} for:item="user">
-                                                                                            <div key={user.key}
-                                                                                                 class="tree-user-row tree-indent-1"
-                                                                                                 data-location-id={user.locationId}
-                                                                                                 data-user-name={user.name}
-                                                                                                 onclick={handleRepTreeSelect}>
-                                                                                                <lightning-icon icon-name="standard:user" size="x-small" class="slds-m-right_x-small"></lightning-icon>
-                                                                                                <span class="tree-user-name">{user.name}</span>
-                                                                                                <template if:true={user.isSelected}>
-                                                                                                    <lightning-icon icon-name="utility:check" size="x-small" variant="success" class="slds-m-left_xx-small"></lightning-icon>
-                                                                                                </template>
+                                                                                            <div key={user.key} class="tree-user-row tree-indent-1">
+                                                                                                <lightning-input
+                                                                                                    type="checkbox"
+                                                                                                    variant="label-hidden"
+                                                                                                    label="Select"
+                                                                                                    checked={user.isSelected}
+                                                                                                    data-location-id={user.locationId}
+                                                                                                    data-user-name={user.name}
+                                                                                                    onchange={handleRepSelect}>
+                                                                                                </lightning-input>
+                                                                                                <span class="tree-user-name"
+                                                                                                      data-location-id={user.locationId}
+                                                                                                      data-user-name={user.name}
+                                                                                                      onclick={handleRepSelect}>{user.name}</span>
                                                                                             </div>
                                                                                         </template>
                                                                                     </div>
@@ -243,28 +273,48 @@
                         </div>
                     </div>
 
-                    <!-- Selected Rep (right) -->
+                    <!-- Selected Reps Basket (right) -->
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_5-of-12">
                         <div class="slds-box">
-                            <div class="slds-text-heading_small slds-m-bottom_small">Selected Rep</div>
+                            <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
+                                <div class="slds-col">
+                                    <span class="slds-text-heading_small">Selected Reps ({selectedRepCount})</span>
+                                </div>
+                                <template if:true={hasSelectedReps}>
+                                    <div class="slds-col_bump-left">
+                                        <lightning-button-icon
+                                            icon-name="utility:clear"
+                                            alternative-text="Clear all"
+                                            title="Clear all"
+                                            onclick={handleClearReps}
+                                            size="small">
+                                        </lightning-button-icon>
+                                    </div>
+                                </template>
+                            </div>
 
-                            <template if:false={selectedRepLocationId}>
+                            <template if:false={hasSelectedReps}>
                                 <p class="slds-text-body_regular slds-text-color_weak slds-text-align_center slds-p-around_medium">
-                                    Select a rep from the territory tree.
+                                    Select reps from the territory tree to add them here.
                                 </p>
                             </template>
 
-                            <template if:true={selectedRepLocationId}>
-                                <div class="basket-item">
-                                    <span>{selectedRepName}</span>
-                                    <lightning-button-icon
-                                        icon-name="utility:close"
-                                        alternative-text="Remove"
-                                        title="Remove"
-                                        onclick={handleRepClear}
-                                        size="x-small"
-                                        variant="bare">
-                                    </lightning-button-icon>
+                            <template if:true={hasSelectedReps}>
+                                <div class="basket-container">
+                                    <template for:each={selectedReps} for:item="rep">
+                                        <div key={rep.locationId} class="basket-item">
+                                            <span>{rep.name}</span>
+                                            <lightning-button-icon
+                                                icon-name="utility:close"
+                                                alternative-text="Remove"
+                                                title="Remove"
+                                                data-location-id={rep.locationId}
+                                                onclick={handleRemoveRep}
+                                                size="x-small"
+                                                variant="bare">
+                                            </lightning-button-icon>
+                                        </div>
+                                    </template>
                                 </div>
                             </template>
                         </div>
@@ -332,7 +382,7 @@
 
                 <template if:false={isLoading}>
                     <div class="slds-text-heading_small slds-m-bottom_medium">
-                        Select samples and quantities to ship
+                        Select samples and quantities to ship to {selectedRepCount} reps
                     </div>
 
                     <template if:true={hasNoInventory}>
@@ -360,7 +410,7 @@
                                         <th scope="col">Batch / Lot</th>
                                         <th scope="col">Expiration</th>
                                         <th scope="col">Available</th>
-                                        <th scope="col">Quantity to Ship</th>
+                                        <th scope="col">Quantity to Ship (per rep)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -428,8 +478,8 @@
                                 <dt class="slds-dl_horizontal__label slds-text-color_weak">From:</dt>
                                 <dd class="slds-dl_horizontal__detail">{selectedWarehouseName}</dd>
                                 <dt class="slds-dl_horizontal__label slds-text-color_weak">To:</dt>
-                                <dd class="slds-dl_horizontal__detail">{selectedRepName}</dd>
-                                <dt class="slds-dl_horizontal__label slds-text-color_weak">Total Units:</dt>
+                                <dd class="slds-dl_horizontal__detail">{selectedRepNames} ({selectedRepCount} reps)</dd>
+                                <dt class="slds-dl_horizontal__label slds-text-color_weak">Units per rep:</dt>
                                 <dd class="slds-dl_horizontal__detail">
                                     <strong>{totalQuantity}</strong>
                                 </dd>
@@ -443,7 +493,7 @@
                                 <th scope="col">Product</th>
                                 <th scope="col">Batch / Lot</th>
                                 <th scope="col">Expiration</th>
-                                <th scope="col">Quantity</th>
+                                <th scope="col">Quantity (per rep)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -472,23 +522,57 @@
                         </lightning-button>
                         <lightning-button
                             variant="brand"
-                            label="Submit Shipment"
+                            label="Submit Shipments"
                             onclick={handleSubmit}
                             disabled={isSubmitting}>
                         </lightning-button>
                     </div>
 
                     <template if:true={isSubmitting}>
-                        <lightning-spinner alternative-text="Creating shipment..." size="medium"></lightning-spinner>
+                        <lightning-spinner alternative-text="Creating shipments..." size="medium"></lightning-spinner>
                     </template>
                 </template>
 
                 <template if:true={shipmentCreated}>
-                    <div class="slds-notify slds-notify_alert slds-alert_texture slds-theme_success" role="alert">
-                        <h2>
-                            Shipment created successfully. {totalQuantity} units sent to {selectedRepName}.
-                        </h2>
+                    <div class="slds-text-heading_small slds-m-bottom_medium">
+                        Results
                     </div>
+
+                    <div class="slds-notify slds-notify_alert slds-alert_texture slds-theme_success slds-m-bottom_medium" role="alert">
+                        <h2>{shipmentSuccessCount} of {selectedRepCount} shipments created successfully.</h2>
+                    </div>
+
+                    <template if:true={hasShipmentFailures}>
+                        <div class="slds-notify slds-notify_alert slds-alert_texture slds-theme_warning slds-m-bottom_medium" role="alert">
+                            <h2>{shipmentFailureCount} shipments could not be created. See details below.</h2>
+                        </div>
+                    </template>
+
+                    <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                        <thead>
+                            <tr class="slds-line-height_reset">
+                                <th scope="col">Rep</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={shipmentResults} for:item="result">
+                                <tr key={result.repLocationId}>
+                                    <td>{result.repName}</td>
+                                    <td>
+                                        <template if:true={result.success}>
+                                            <lightning-badge label="Created" class="slds-theme_success"></lightning-badge>
+                                        </template>
+                                        <template if:false={result.success}>
+                                            <lightning-badge label="Failed" class="slds-theme_error"></lightning-badge>
+                                        </template>
+                                    </td>
+                                    <td>{result.message}</td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
 
                     <div class="slds-m-top_large slds-text-align_center">
                         <lightning-button
