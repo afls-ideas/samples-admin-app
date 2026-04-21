@@ -67,16 +67,19 @@ export default class UserInventoryLocationCreator extends LightningElement {
                 key: raw.territoryId + '-' + u.userId
             }));
 
-            const hasMatchingUser = term
-                ? users.some(u => u.name.toLowerCase().includes(term))
-                : users.length > 0;
-            const hasMatchingChild = children.some(c => c.visible);
-            const nameMatches = term ? raw.name.toLowerCase().includes(term) : false;
-            const visible = hasMatchingUser || hasMatchingChild || nameMatches;
-
-            const filteredUsers = term
-                ? users.filter(u => u.name.toLowerCase().includes(term) || nameMatches)
-                : users;
+            let visible;
+            let filteredUsers;
+            if (term) {
+                const hasMatchingUser = users.some(u => u.name.toLowerCase().includes(term));
+                const hasMatchingChild = children.some(c => c.visible);
+                const nameMatches = raw.name.toLowerCase().includes(term);
+                visible = hasMatchingUser || hasMatchingChild || nameMatches;
+                filteredUsers = users.filter(u => u.name.toLowerCase().includes(term) || nameMatches);
+            } else {
+                const hasChildTerritories = (childrenMap[raw.territoryId] || []).length > 0;
+                visible = hasChildTerritories || users.length > 0;
+                filteredUsers = users;
+            }
 
             const isExpanded = !!this.expandedMap[raw.territoryId];
 
