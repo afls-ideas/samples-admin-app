@@ -53,45 +53,81 @@ public with sharing class SamplesShipmentController {
         return results;
     }
 
+    public class TerritoryNode {
+        @AuraEnabled public Id territoryId;
+        @AuraEnabled public String name;
+        @AuraEnabled public Id parentTerritoryId;
+        @AuraEnabled public List<RepUser> users;
+    }
+
+    public class RepUser {
+        @AuraEnabled public Id userId;
+        @AuraEnabled public String name;
+        @AuraEnabled public Id locationId;
+    }
+
     @AuraEnabled(cacheable=true)
-    public static List<LocationOption> getReps() {
-        List<Schema.Location> locations = [
+    public static List<TerritoryNode> getRepTerritoryTree() {
+        Map<Id, Schema.Location> locationByUser = new Map<Id, Schema.Location>();
+        for (Schema.Location loc : [
             SELECT Id, Name, PrimaryUserId
             FROM Location
             WHERE LocationType = 'User Inventory'
               AND IsInventoryLocation = true
               AND PrimaryUserId != null
+        ]) {
+            locationByUser.put(loc.PrimaryUserId, loc);
+        }
+
+        Set<Id> repUserIds = locationByUser.keySet();
+
+        Map<Id, String> userNameMap = new Map<Id, String>();
+        for (User u : [SELECT Id, Name FROM User WHERE Id IN :repUserIds AND IsActive = true]) {
+            userNameMap.put(u.Id, u.Name);
+        }
+
+        List<Territory2> territories = [
+            SELECT Id, Name, ParentTerritory2Id
+            FROM Territory2
+            WHERE Territory2Model.State = 'Active'
             ORDER BY Name
         ];
 
-        Set<Id> userIds = new Set<Id>();
-        for (Schema.Location loc : locations) {
-            userIds.add(loc.PrimaryUserId);
-        }
-
-        Map<Id, User> userMap = new Map<Id, User>([
-            SELECT Id, Name FROM User WHERE Id IN :userIds
-        ]);
-
-        Map<Id, String> territoryMap = new Map<Id, String>();
+        Map<Id, List<RepUser>> territoryUsersMap = new Map<Id, List<RepUser>>();
+        Set<String> seen = new Set<String>();
         for (UserTerritory2Association uta : [
-            SELECT UserId, Territory2.Name
+            SELECT UserId, Territory2Id
             FROM UserTerritory2Association
-            WHERE UserId IN :userIds AND IsActive = true
-            ORDER BY Territory2.Name
+            WHERE IsActive = true
+              AND UserId IN :repUserIds
+              AND Territory2.Territory2Model.State = 'Active'
+            ORDER BY User.Name
         ]) {
-            if (!territoryMap.containsKey(uta.UserId)) {
-                territoryMap.put(uta.UserId, uta.Territory2.Name);
+            String key = uta.Territory2Id + '-' + uta.UserId;
+            if (seen.contains(key)) continue;
+            seen.add(key);
+
+            if (!territoryUsersMap.containsKey(uta.Territory2Id)) {
+                territoryUsersMap.put(uta.Territory2Id, new List<RepUser>());
             }
+            RepUser ru = new RepUser();
+            ru.userId = uta.UserId;
+            ru.name = userNameMap.containsKey(uta.UserId) ? userNameMap.get(uta.UserId) : '';
+            Schema.Location loc = locationByUser.get(uta.UserId);
+            ru.locationId = loc != null ? loc.Id : null;
+            territoryUsersMap.get(uta.Territory2Id).add(ru);
         }
 
-        List<LocationOption> results = new List<LocationOption>();
-        for (Schema.Location loc : locations) {
-            User u = userMap.get(loc.PrimaryUserId);
-            String uName = u != null ? u.Name : loc.Name;
-            String terr = territoryMap.containsKey(loc.PrimaryUserId)
-                ? territoryMap.get(loc.PrimaryUserId) : '';
-            results.add(new LocationOption(loc, uName, terr));
+        List<TerritoryNode> results = new List<TerritoryNode>();
+        for (Territory2 t : territories) {
+            TerritoryNode node = new TerritoryNode();
+            node.territoryId = t.Id;
+            node.name = t.Name;
+            node.parentTerritoryId = t.ParentTerritory2Id;
+            node.users = territoryUsersMap.containsKey(t.Id)
+                ? territoryUsersMap.get(t.Id)
+                : new List<RepUser>();
+            results.add(node);
         }
         return results;
     }

@@ -1,7 +1,7 @@
 import { LightningElement, wire } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getWarehouses from '@salesforce/apex/SamplesShipmentController.getWarehouses';
-import getReps from '@salesforce/apex/SamplesShipmentController.getReps';
+import getRepTerritoryTree from '@salesforce/apex/SamplesShipmentController.getRepTerritoryTree';
 import getWarehouseInventory from '@salesforce/apex/SamplesShipmentController.getWarehouseInventory';
 import createShipment from '@salesforce/apex/SamplesShipmentController.createShipment';
 
@@ -9,10 +9,12 @@ export default class SamplesShipmentCreator extends LightningElement {
     currentStep = '1';
     selectedWarehouseId = '';
     selectedRepLocationId = '';
+    selectedRepName = '';
     warehouseOptions = [];
-    allRepOptions = [];
+    rawNodes = [];
+    repExpandedMap = {};
     repSearchTerm = '';
-    repDropdownOpen = false;
+    repTreeOpen = false;
     inventoryData = [];
     selectedItems = [];
     isLoading = false;
@@ -34,30 +36,18 @@ export default class SamplesShipmentCreator extends LightningElement {
         }
     }
 
-    @wire(getReps)
-    wiredReps({ data, error }) {
+    @wire(getRepTerritoryTree)
+    wiredRepTree({ data, error }) {
         if (data) {
-            this.allRepOptions = data.map(loc => ({
-                label: loc.userName || loc.name,
-                territory: loc.territory || '',
-                value: loc.locationId
-            }));
+            this.rawNodes = data;
         } else if (error) {
-            this.showError('Failed to load reps', error);
+            this.showError('Failed to load rep territories', error);
         }
     }
 
-    get isStep1() {
-        return this.currentStep === '1';
-    }
-
-    get isStep2() {
-        return this.currentStep === '2';
-    }
-
-    get isStep3() {
-        return this.currentStep === '3';
-    }
+    get isStep1() { return this.currentStep === '1'; }
+    get isStep2() { return this.currentStep === '2'; }
+    get isStep3() { return this.currentStep === '3'; }
 
     get isNextDisabled() {
         return !(this.selectedWarehouseId && this.selectedRepLocationId);
@@ -74,24 +64,6 @@ export default class SamplesShipmentCreator extends LightningElement {
         return opt ? opt.label : '';
     }
 
-    get selectedRepName() {
-        const opt = this.allRepOptions.find(o => o.value === this.selectedRepLocationId);
-        return opt ? opt.label : '';
-    }
-
-    get filteredRepOptions() {
-        const term = this.repSearchTerm.toLowerCase();
-        if (!term) return this.allRepOptions;
-        return this.allRepOptions.filter(r =>
-            r.label.toLowerCase().includes(term) ||
-            r.territory.toLowerCase().includes(term)
-        );
-    }
-
-    get noRepResults() {
-        return this.filteredRepOptions.length === 0;
-    }
-
     get totalQuantity() {
         return this.selectedItems.reduce((sum, item) => sum + item.quantity, 0);
     }
@@ -103,6 +75,116 @@ export default class SamplesShipmentCreator extends LightningElement {
     get hasWarehousePreview() {
         return this.warehousePreview.length > 0;
     }
+
+    // --- Territory tree for rep selection ---
+
+    get childrenMap() {
+        const map = {};
+        for (const node of this.rawNodes) {
+            const pid = node.parentTerritoryId || 'root';
+            if (!map[pid]) map[pid] = [];
+            map[pid].push(node);
+        }
+        return map;
+    }
+
+    get repTreeData() {
+        const term = this.repSearchTerm.toLowerCase();
+        const childrenMap = this.childrenMap;
+
+        const buildNode = (raw) => {
+            const children = (childrenMap[raw.territoryId] || []).map(c => buildNode(c));
+            const users = (raw.users || []).map(u => ({
+                ...u,
+                isSelected: this.selectedRepLocationId === u.locationId,
+                key: raw.territoryId + '-' + u.userId
+            }));
+
+            let visible;
+            let filteredUsers;
+            if (term) {
+                const hasMatchingUser = users.some(u => u.name.toLowerCase().includes(term));
+                const hasMatchingChild = children.some(c => c.visible);
+                const nameMatches = raw.name.toLowerCase().includes(term);
+                visible = hasMatchingUser || hasMatchingChild || nameMatches;
+                filteredUsers = users.filter(u => u.name.toLowerCase().includes(term) || nameMatches);
+            } else {
+                const hasChildTerritories = (childrenMap[raw.territoryId] || []).length > 0;
+                visible = hasChildTerritories || users.length > 0;
+                filteredUsers = users;
+            }
+
+            const isExpanded = !!this.repExpandedMap[raw.territoryId];
+
+            return {
+                territoryId: raw.territoryId,
+                name: raw.name,
+                users: filteredUsers,
+                children: children.filter(c => c.visible),
+                visible,
+                isExpanded,
+                hasChildren: children.filter(c => c.visible).length > 0 || filteredUsers.length > 0,
+                expandIcon: isExpanded ? 'utility:chevrondown' : 'utility:chevronright',
+                repCount: this._countRepsBelow(raw.territoryId, childrenMap)
+            };
+        };
+
+        const roots = (childrenMap['root'] || []).map(r => buildNode(r));
+        return roots.filter(r => r.visible);
+    }
+
+    _countRepsBelow(territoryId, childrenMap) {
+        let count = 0;
+        const node = this.rawNodes.find(n => n.territoryId === territoryId);
+        if (node) {
+            count += (node.users || []).length;
+        }
+        for (const child of (childrenMap[territoryId] || [])) {
+            count += this._countRepsBelow(child.territoryId, childrenMap);
+        }
+        return count;
+    }
+
+    handleRepTreeToggle(event) {
+        const tid = event.currentTarget.dataset.territoryId;
+        const updated = { ...this.repExpandedMap };
+        updated[tid] = !updated[tid];
+        this.repExpandedMap = updated;
+    }
+
+    handleRepTreeSearch(event) {
+        this.repSearchTerm = event.target.value || '';
+        if (this.repSearchTerm) {
+            const expanded = { ...this.repExpandedMap };
+            for (const node of this.rawNodes) {
+                expanded[node.territoryId] = true;
+            }
+            this.repExpandedMap = expanded;
+        }
+        this.repTreeOpen = true;
+    }
+
+    handleRepTreeFocus() {
+        this.repTreeOpen = true;
+    }
+
+    handleRepTreeSelect(event) {
+        const locationId = event.currentTarget.dataset.locationId;
+        const userName = event.currentTarget.dataset.userName;
+        this.selectedRepLocationId = locationId;
+        this.selectedRepName = userName;
+        this.repTreeOpen = false;
+        this.repSearchTerm = '';
+    }
+
+    handleRepClear() {
+        this.selectedRepLocationId = '';
+        this.selectedRepName = '';
+        this.repSearchTerm = '';
+        this.repTreeOpen = false;
+    }
+
+    // --- Warehouse ---
 
     handleWarehouseChange(event) {
         this.selectedWarehouseId = event.detail.value;
@@ -125,37 +207,6 @@ export default class SamplesShipmentCreator extends LightningElement {
                     this.isLoadingPreview = false;
                     this.showError('Failed to load warehouse inventory', error);
                 });
-        }
-    }
-
-    handleRepSearch(event) {
-        this.repSearchTerm = event.detail.value || '';
-        if (!this.repSearchTerm) {
-            this.selectedRepLocationId = '';
-        }
-        this.repDropdownOpen = true;
-    }
-
-    handleRepFocus() {
-        this.repDropdownOpen = true;
-        this._repBlurListener = (e) => {
-            const container = this.template.querySelector('.rep-search-container');
-            if (container && !container.contains(e.target)) {
-                this.repDropdownOpen = false;
-                document.removeEventListener('click', this._repBlurListener);
-            }
-        };
-        // eslint-disable-next-line @lwc/lwc/no-async-operation
-        setTimeout(() => document.addEventListener('click', this._repBlurListener), 0);
-    }
-
-    handleRepSelect(event) {
-        const value = event.currentTarget.dataset.value;
-        const rep = this.allRepOptions.find(r => r.value === value);
-        if (rep) {
-            this.selectedRepLocationId = rep.value;
-            this.repSearchTerm = rep.label;
-            this.repDropdownOpen = false;
         }
     }
 
@@ -264,7 +315,10 @@ export default class SamplesShipmentCreator extends LightningElement {
         this.currentStep = '1';
         this.selectedWarehouseId = '';
         this.selectedRepLocationId = '';
+        this.selectedRepName = '';
         this.repSearchTerm = '';
+        this.repExpandedMap = {};
+        this.repTreeOpen = false;
         this.inventoryData = [];
         this.warehousePreview = [];
         this.selectedItems = [];

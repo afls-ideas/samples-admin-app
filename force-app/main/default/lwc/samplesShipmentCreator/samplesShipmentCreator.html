@@ -22,6 +22,7 @@
                 </div>
 
                 <div class="slds-grid slds-gutters slds-wrap">
+                    <!-- Source Warehouse -->
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_medium">
                         <lightning-combobox
                             label="Source Location"
@@ -32,47 +33,207 @@
                             required>
                         </lightning-combobox>
                     </div>
+
+                    <!-- Destination Rep Territory Tree -->
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_medium">
-                        <div class="slds-form-element">
+                        <div class="slds-form-element" style="position:relative;">
                             <label class="slds-form-element__label">
                                 <abbr class="slds-required" title="required">*</abbr>
                                 Destination User Inventory Location
                                 <lightning-helptext
-                                    content="Only users with an inventory location are shown. A rep must have a Location record (Type = User Inventory) to receive sample shipments.">
+                                    content="Browse the territory hierarchy to find and select a rep. Only users with an inventory location are shown.">
                                 </lightning-helptext>
                             </label>
                             <div class="slds-form-element__control">
-                                <div class="rep-search-container">
+                                <template if:true={selectedRepLocationId}>
+                                    <div class="rep-selected-pill">
+                                        <lightning-pill
+                                            label={selectedRepName}
+                                            onremove={handleRepClear}>
+                                        </lightning-pill>
+                                    </div>
+                                </template>
+                                <template if:false={selectedRepLocationId}>
                                     <lightning-input
                                         type="search"
                                         variant="label-hidden"
                                         label="Search reps"
-                                        placeholder="Search by name or territory..."
+                                        placeholder="Search by territory or rep name..."
                                         value={repSearchTerm}
-                                        onchange={handleRepSearch}
-                                        onfocus={handleRepFocus}>
+                                        onchange={handleRepTreeSearch}
+                                        onfocus={handleRepTreeFocus}>
                                     </lightning-input>
-                                    <template if:true={repDropdownOpen}>
-                                        <div class="rep-dropdown">
-                                            <template for:each={filteredRepOptions} for:item="rep">
-                                                <div key={rep.value}
-                                                     class="rep-option"
-                                                     data-value={rep.value}
-                                                     onmousedown={handleRepSelect}>
-                                                    <span class="rep-name">{rep.label}</span>
-                                                    <template if:true={rep.territory}>
-                                                        <span class="rep-territory">{rep.territory}</span>
+                                </template>
+                                <template if:true={repTreeOpen}>
+                                    <div class="rep-tree-dropdown">
+                                        <!-- Level 0 -->
+                                        <template for:each={repTreeData} for:item="l0">
+                                            <div key={l0.territoryId} class="rep-tree-node">
+                                                <div class="rep-tree-territory-row">
+                                                    <template if:true={l0.hasChildren}>
+                                                        <lightning-button-icon
+                                                            icon-name={l0.expandIcon}
+                                                            variant="bare"
+                                                            size="x-small"
+                                                            alternative-text="Toggle"
+                                                            data-territory-id={l0.territoryId}
+                                                            onclick={handleRepTreeToggle}>
+                                                        </lightning-button-icon>
+                                                    </template>
+                                                    <template if:false={l0.hasChildren}>
+                                                        <span class="rep-tree-spacer"></span>
+                                                    </template>
+                                                    <span class="rep-tree-territory-name">{l0.name}</span>
+                                                    <template if:true={l0.repCount}>
+                                                        <lightning-badge label={l0.repCount} class="slds-m-left_xx-small"></lightning-badge>
                                                     </template>
                                                 </div>
-                                            </template>
-                                            <template if:true={noRepResults}>
-                                                <div class="rep-option rep-no-results">
-                                                    <span class="rep-territory">No matching reps found</span>
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </template>
-                                </div>
+                                                <template if:true={l0.isExpanded}>
+                                                    <template for:each={l0.users} for:item="user">
+                                                        <div key={user.key}
+                                                             class="rep-tree-user-row"
+                                                             data-location-id={user.locationId}
+                                                             data-user-name={user.name}
+                                                             onmousedown={handleRepTreeSelect}>
+                                                            <lightning-icon icon-name="standard:user" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                                                            <span>{user.name}</span>
+                                                        </div>
+                                                    </template>
+                                                    <!-- Level 1 -->
+                                                    <template for:each={l0.children} for:item="l1">
+                                                        <div key={l1.territoryId} class="rep-tree-node rep-tree-indent">
+                                                            <div class="rep-tree-territory-row">
+                                                                <template if:true={l1.hasChildren}>
+                                                                    <lightning-button-icon
+                                                                        icon-name={l1.expandIcon}
+                                                                        variant="bare"
+                                                                        size="x-small"
+                                                                        alternative-text="Toggle"
+                                                                        data-territory-id={l1.territoryId}
+                                                                        onclick={handleRepTreeToggle}>
+                                                                    </lightning-button-icon>
+                                                                </template>
+                                                                <template if:false={l1.hasChildren}>
+                                                                    <span class="rep-tree-spacer"></span>
+                                                                </template>
+                                                                <span class="rep-tree-territory-name">{l1.name}</span>
+                                                                <template if:true={l1.repCount}>
+                                                                    <lightning-badge label={l1.repCount} class="slds-m-left_xx-small"></lightning-badge>
+                                                                </template>
+                                                            </div>
+                                                            <template if:true={l1.isExpanded}>
+                                                                <template for:each={l1.users} for:item="user">
+                                                                    <div key={user.key}
+                                                                         class="rep-tree-user-row"
+                                                                         data-location-id={user.locationId}
+                                                                         data-user-name={user.name}
+                                                                         onmousedown={handleRepTreeSelect}>
+                                                                        <lightning-icon icon-name="standard:user" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                                                                        <span>{user.name}</span>
+                                                                    </div>
+                                                                </template>
+                                                                <!-- Level 2 -->
+                                                                <template for:each={l1.children} for:item="l2">
+                                                                    <div key={l2.territoryId} class="rep-tree-node rep-tree-indent">
+                                                                        <div class="rep-tree-territory-row">
+                                                                            <template if:true={l2.hasChildren}>
+                                                                                <lightning-button-icon
+                                                                                    icon-name={l2.expandIcon}
+                                                                                    variant="bare"
+                                                                                    size="x-small"
+                                                                                    alternative-text="Toggle"
+                                                                                    data-territory-id={l2.territoryId}
+                                                                                    onclick={handleRepTreeToggle}>
+                                                                                </lightning-button-icon>
+                                                                            </template>
+                                                                            <template if:false={l2.hasChildren}>
+                                                                                <span class="rep-tree-spacer"></span>
+                                                                            </template>
+                                                                            <span class="rep-tree-territory-name">{l2.name}</span>
+                                                                            <template if:true={l2.repCount}>
+                                                                                <lightning-badge label={l2.repCount} class="slds-m-left_xx-small"></lightning-badge>
+                                                                            </template>
+                                                                        </div>
+                                                                        <template if:true={l2.isExpanded}>
+                                                                            <template for:each={l2.users} for:item="user">
+                                                                                <div key={user.key}
+                                                                                     class="rep-tree-user-row"
+                                                                                     data-location-id={user.locationId}
+                                                                                     data-user-name={user.name}
+                                                                                     onmousedown={handleRepTreeSelect}>
+                                                                                    <lightning-icon icon-name="standard:user" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                                                                                    <span>{user.name}</span>
+                                                                                </div>
+                                                                            </template>
+                                                                            <!-- Level 3 -->
+                                                                            <template for:each={l2.children} for:item="l3">
+                                                                                <div key={l3.territoryId} class="rep-tree-node rep-tree-indent">
+                                                                                    <div class="rep-tree-territory-row">
+                                                                                        <template if:true={l3.hasChildren}>
+                                                                                            <lightning-button-icon
+                                                                                                icon-name={l3.expandIcon}
+                                                                                                variant="bare"
+                                                                                                size="x-small"
+                                                                                                alternative-text="Toggle"
+                                                                                                data-territory-id={l3.territoryId}
+                                                                                                onclick={handleRepTreeToggle}>
+                                                                                            </lightning-button-icon>
+                                                                                        </template>
+                                                                                        <template if:false={l3.hasChildren}>
+                                                                                            <span class="rep-tree-spacer"></span>
+                                                                                        </template>
+                                                                                        <span class="rep-tree-territory-name">{l3.name}</span>
+                                                                                        <template if:true={l3.repCount}>
+                                                                                            <lightning-badge label={l3.repCount} class="slds-m-left_xx-small"></lightning-badge>
+                                                                                        </template>
+                                                                                    </div>
+                                                                                    <template if:true={l3.isExpanded}>
+                                                                                        <template for:each={l3.users} for:item="user">
+                                                                                            <div key={user.key}
+                                                                                                 class="rep-tree-user-row"
+                                                                                                 data-location-id={user.locationId}
+                                                                                                 data-user-name={user.name}
+                                                                                                 onmousedown={handleRepTreeSelect}>
+                                                                                                <lightning-icon icon-name="standard:user" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                                                                                                <span>{user.name}</span>
+                                                                                            </div>
+                                                                                        </template>
+                                                                                        <!-- Level 4 -->
+                                                                                        <template for:each={l3.children} for:item="l4">
+                                                                                            <div key={l4.territoryId} class="rep-tree-node rep-tree-indent">
+                                                                                                <div class="rep-tree-territory-row">
+                                                                                                    <span class="rep-tree-spacer"></span>
+                                                                                                    <span class="rep-tree-territory-name">{l4.name}</span>
+                                                                                                    <template if:true={l4.repCount}>
+                                                                                                        <lightning-badge label={l4.repCount} class="slds-m-left_xx-small"></lightning-badge>
+                                                                                                    </template>
+                                                                                                </div>
+                                                                                                <template for:each={l4.users} for:item="user">
+                                                                                                    <div key={user.key}
+                                                                                                         class="rep-tree-user-row"
+                                                                                                         data-location-id={user.locationId}
+                                                                                                         data-user-name={user.name}
+                                                                                                         onmousedown={handleRepTreeSelect}>
+                                                                                                        <lightning-icon icon-name="standard:user" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                                                                                                        <span>{user.name}</span>
+                                                                                                    </div>
+                                                                                                </template>
+                                                                                            </div>
+                                                                                        </template>
+                                                                                    </template>
+                                                                                </div>
+                                                                            </template>
+                                                                        </template>
+                                                                    </div>
+                                                                </template>
+                                                            </template>
+                                                        </div>
+                                                    </template>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
                             </div>
                         </div>
                     </div>
